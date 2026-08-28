@@ -9,7 +9,8 @@ captured frames is strictly out of scope and should not be added.
 This capability requires law-enforcement legal authority, not a third-party
 app, and carries serious misidentification/misuse risk.
 
-This module stubs the WebRTC video capture by using a placeholder image path.
+Frames originate from user-consented screen capture, not any call-tapping
+mechanism.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 import cv2
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +52,32 @@ def process_test_frame(image_path: str, call_id: str) -> Optional[Dict[str, Any]
         with open(image_path, "rb") as f:
             image_bytes = f.read()
 
+        return process_frame_bytes(image_bytes, call_id, local_path=image_path)
+
+    except Exception as e:
+        logger.error(f"Error processing video evidence frame from path: {e}", exc_info=True)
+        return None
+
+def process_frame_bytes(image_bytes: bytes, call_id: str, local_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Process a video frame from raw bytes.
+    
+    1. Runs Haar Cascade to detect if at least one face is present.
+    2. Computes SHA-256 hash of the image bytes for chain-of-custody.
+    3. Returns metadata.
+
+    Returns None if the image cannot be read.
+    """
+    try:
         # Compute SHA-256
         sha256_hash = hashlib.sha256(image_bytes).hexdigest()
 
-        # Load image for OpenCV presence detection
-        img = cv2.imread(image_path)
+        # Load image for OpenCV presence detection from bytes
+        np_arr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        
         if img is None:
-            logger.warning(f"Video evidence stub: cv2 failed to read image at {image_path}")
+            logger.warning("Video evidence: cv2 failed to decode image bytes")
             return None
 
         # Convert to grayscale for Haar Cascade
@@ -79,7 +100,7 @@ def process_test_frame(image_path: str, call_id: str) -> Optional[Dict[str, Any]
             "call_id": call_id,
             "sha256_hash": sha256_hash,
             "face_detected": face_detected,
-            "local_path": image_path,
+            "local_path": local_path,
         }
 
     except Exception as e:

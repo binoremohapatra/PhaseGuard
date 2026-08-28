@@ -25,7 +25,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -215,6 +215,55 @@ async def activate_scambait(
     return {"status": "scambaiter_active", "call_id": call_id, "ts": datetime.now(timezone.utc).isoformat()}
 
 
+@app.post("/call/{call_id}/frame")
+@limiter.limit(LIMIT_API)
+async def upload_video_frame(
+    request: Request,
+    call_id: str,
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> dict:
+    """
+    Accepts an uploaded video frame via user-consented screen capture.
+    Runs the Haar Cascade pipeline and saves it to the rolling buffer.
+    """
+    if credentials:
+        verify_call_token_for_call(credentials.credentials, call_id)
+    else:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    session = manager.require_session(call_id)
+    image_bytes = await file.read()
+
+    from workers.executor import get_executor
+    from forensics.video_evidence import process_frame_bytes
+    import asyncio
+
+    loop = asyncio.get_event_loop()
+    frame_meta = await loop.run_in_executor(
+        get_executor(),
+        process_frame_bytes,
+        image_bytes,
+        call_id,
+        None
+    )
+
+    if frame_meta:
+        # Keep a rolling buffer of the last 3 uploaded frames per call session
+        session.video_frames_buffer.append(frame_meta)
+        if len(session.video_frames_buffer) > 3:
+            session.video_frames_buffer.pop(0)
+
+        logger.info(
+            "Video frame evidence buffered: call_id=%r hash=%s face=%s",
+            call_id,
+            frame_meta["sha256_hash"][:12],
+            frame_meta["face_detected"],
+        )
+        return {"status": "ok", "sha256_hash": frame_meta["sha256_hash"]}
+
+    raise HTTPException(status_code=400, detail="Failed to process frame")
+
 @app.get("/call/{call_id}/dossier")
 @limiter.limit(LIMIT_API)
 async def get_dossier(
@@ -244,11 +293,42 @@ async def get_dossier(
     full_transcript = " ".join(session.transcript_history)
     identifiers = await extract_identifiers(full_transcript, call_id=call_id)
 
+    # Build entity verification signals for impersonated entities (if any)
+    from intel.company_verification import verify_entity
+    entity_verification_data = []
+    impersonated_entities = identifiers.get("impersonated_entities", [])
+    if impersonated_entities:
+        # Verify up to 3 entities to keep latency reasonable
+        for entity_name in impersonated_entities[:3]:
+            try:
+                ev = await verify_entity(entity_name)
+                entity_verification_data.append(ev)
+            except Exception as _ev_err:
+                logger.warning("Entity verification failed for %r: %s", entity_name, _ev_err)
+    elif session.factcheck_history:
+        # Fallback: scan factcheck history for claimed entities in messages
+        seen_entities: set = set()
+        for entry in session.factcheck_history:
+            msg = entry.get("message", "")
+            # Extract quoted entity names like 'Google HR', 'RBI', 'SBI'
+            import re as _re
+            for match in _re.findall(r"(?:from|as|claiming to be|impersonating)\s+([A-Z][\w\s]{2,40}?)(?:\s|,|\.|$)", msg):
+                name = match.strip()
+                if name and name not in seen_entities:
+                    seen_entities.add(name)
+                    try:
+                        ev = await verify_entity(name)
+                        entity_verification_data.append(ev)
+                    except Exception:
+                        pass
+                    if len(entity_verification_data) >= 2:
+                        break
+
     # Build PDF
     from forensics.pdf_report import generate_forensic_pdf
     pdf_bytes = generate_forensic_pdf(
         call_id=call_id,
-        call_start_time=session.factcheck_history[0]["ts"] if session.factcheck_history else "N/A",
+        call_start_time=session.factcheck_history[0].get("ts", "N/A") if session.factcheck_history else "N/A",
         call_duration_seconds=hash_result["duration_seconds"],
         ingestion_mode=session.ingestion_mode,
         hash_result=dict(hash_result),
@@ -271,6 +351,7 @@ async def get_dossier(
         ],
         pcm16_bytes=session.recorded_audio_bytes,
         video_frames=session.video_frames if session.video_frames else None,
+        entity_verification=entity_verification_data,
     )
 
     # Store extracted identifiers on session

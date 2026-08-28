@@ -417,7 +417,7 @@ def generate_forensic_pdf(
                 frame.get("timestamp", "")[:19],
                 frame.get("sha256_hash", "")[:32] + "...",
                 "YES" if frame.get("face_detected") else "NO",
-                frame.get("local_path", "")[-40:],
+                (frame.get("local_path") or "")[-40:],
             ])
         vf_table = Table(vf_data, colWidths=[1 * cm, 4 * cm, 4.5 * cm, 2.5 * cm, 4 * cm])
         vf_table.setStyle(TableStyle([
@@ -435,7 +435,7 @@ def generate_forensic_pdf(
 
         # Embed frame thumbnails if the files are still on disk
         for i, frame in enumerate(video_frames):
-            local_path = frame.get("local_path", "")
+            local_path = frame.get("local_path") or ""
             import os as _os
             if local_path and _os.path.exists(local_path):
                 try:

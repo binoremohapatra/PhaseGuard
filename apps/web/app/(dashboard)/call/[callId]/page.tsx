@@ -23,12 +23,16 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
   const [scambaiterStatus, setScambaiterStatus] = useState<string>('');
   const [escalationModalOpen, setEscalationModalOpen] = useState(false);
   const [videoFrameCount, setVideoFrameCount] = useState(0);
+  const [isScreenCaptureActive, setIsScreenCaptureActive] = useState(false);
   // DSP enabled/disabled — off by default (real-world validation showed unreliable standalone results)
   const [isDspEnabled, setIsDspEnabled] = useState(false);
 
   const wsClientRef = useRef<WsClient | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const screenCaptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     async function initializeCall() {
@@ -100,6 +104,7 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
         wsClientRef.current.disconnect();
       }
       stopMic();
+      stopScreenCapture();
     };
   }, [callId]);
 
@@ -141,6 +146,76 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
       audioContextRef.current = null;
     }
     setIsMicActive(false);
+  };
+
+  const startScreenCapture = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+      setIsScreenCaptureActive(true);
+
+      // Extract and upload frame every 5 seconds
+      screenCaptureIntervalRef.current = setInterval(() => {
+        captureAndUploadFrame();
+      }, 5000);
+
+      // Handle user stopping share via browser native UI
+      stream.getVideoTracks()[0].onended = () => {
+        stopScreenCapture();
+      };
+    } catch (err) {
+      console.error('Screen capture failed or denied', err);
+    }
+  };
+
+  const stopScreenCapture = () => {
+    if (screenCaptureIntervalRef.current) {
+      clearInterval(screenCaptureIntervalRef.current);
+      screenCaptureIntervalRef.current = null;
+    }
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsScreenCaptureActive(false);
+  };
+
+  const captureAndUploadFrame = async () => {
+    if (!videoRef.current || !canvasRef.current || !authToken) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Set canvas to actual video dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const formData = new FormData();
+      formData.append('file', blob, 'frame.jpg');
+      
+      try {
+        await fetch(`http://localhost:8000/call/${callId}/frame`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${authToken}`
+          },
+          body: formData
+        });
+      } catch (err) {
+        console.error('Frame upload failed', err);
+      }
+    }, 'image/jpeg', 0.8);
   };
 
   const deployScambaiter = async () => {
@@ -186,10 +261,26 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
           <p className="text-gray-400 font-mono mt-1">Interception Stream: {callId}</p>
         </div>
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
-            <span className="font-mono uppercase text-sm text-gray-300">WS: {status}</span>
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${status === 'connected' ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+              <span className="font-mono uppercase text-sm text-gray-300">WS: {status}</span>
+            </div>
+            {isScreenCaptureActive && (
+              <div className="flex items-center gap-2">
+                <span className="animate-pulse text-xs">🔴</span>
+                <span className="font-mono uppercase text-xs text-red-400 font-bold tracking-wider border border-red-500/30 bg-red-900/20 px-2 py-0.5 rounded">Screen protection active</span>
+              </div>
+            )}
           </div>
+          <button 
+            onClick={isScreenCaptureActive ? stopScreenCapture : startScreenCapture}
+            className={`px-4 py-2 rounded-lg font-bold transition-colors ${
+              isScreenCaptureActive ? 'bg-red-600/80 hover:bg-red-700/80 text-white text-sm' : 'bg-purple-600/80 hover:bg-purple-700/80 text-white text-sm'
+            }`}
+          >
+            {isScreenCaptureActive ? 'Stop Protection' : 'Start Screen Protection'}
+          </button>
           <button 
             onClick={isMicActive ? stopMic : startMic}
             className={`px-6 py-2 rounded-lg font-bold transition-colors ${
@@ -200,6 +291,10 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
           </button>
         </div>
       </header>
+
+      {/* Hidden elements for screen capture frame extraction */}
+      <video ref={videoRef} className="hidden" muted playsInline />
+      <canvas ref={canvasRef} className="hidden" />
 
       <main className="flex flex-col gap-8">
         {/* ── PRIMARY SECTION: Alert Banner ── */}

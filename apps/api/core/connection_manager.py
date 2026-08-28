@@ -54,6 +54,7 @@ class CallSession:
     bispectrum_task: Optional[asyncio.Task] = None
     tremor_task: Optional[asyncio.Task] = None
     stt_task: Optional[asyncio.Task] = None
+    evidence_task: Optional[asyncio.Task] = None   # video evidence capture loop
 
     # Latest DSP results (for dossier)
     latest_pdi: float = 0.0
@@ -73,6 +74,7 @@ class CallSession:
     transcript_history: List[str] = field(default_factory=list)
     extracted_identifiers: Optional[Dict[str, Any]] = None
     video_frames: List[Dict[str, Any]] = field(default_factory=list)
+    video_frames_buffer: List[Dict[str, Any]] = field(default_factory=list)
 
     # Escalation chain-of-custody
     escalation_records: List[EscalationRecord] = field(default_factory=list)
@@ -81,6 +83,11 @@ class CallSession:
 
     # Ingestion source info
     ingestion_mode: str = "browser_mic"
+
+    # Operational mode — "full" (all services up) or "limited" (offline fallback active)
+    # Set by accessibility/offline_fallback.py when LLM/network APIs consistently fail.
+    # DSP-only threat detection continues running in "limited" mode.
+    mode: str = "full"
 
 
 class ConnectionManager:
@@ -136,7 +143,7 @@ class ConnectionManager:
 
         session.state = CallState.ENDED
 
-        for task_attr in ("bispectrum_task", "tremor_task", "stt_task"):
+        for task_attr in ("bispectrum_task", "tremor_task", "stt_task", "evidence_task"):
             task: Optional[asyncio.Task] = getattr(session, task_attr)
             if task and not task.done():
                 task.cancel()
@@ -178,6 +185,18 @@ class ConnectionManager:
                 await session.websocket.send_json(payload)
             except Exception as exc:
                 logger.warning("send_json failed for call_id=%r: %s", call_id, exc)
+
+    async def broadcast_to_client(self, call_id: str, payload: dict) -> None:
+        """
+        Alias for send_json used by accessibility / notification code paths
+        (e.g. offline_fallback, future push-notification senders) to signal
+        client-facing state changes such as mode_update.
+
+        Keeping it as a named method — rather than a bare send_json call —
+        makes the intent explicit at the call site and allows future
+        differentiation (e.g. queuing for reconnect, HTTP push fallback).
+        """
+        await self.send_json(call_id, payload)
 
     # ── Diagnostics ───────────────────────────────────────────────────────────
 

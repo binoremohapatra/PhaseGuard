@@ -235,7 +235,7 @@ async def generate_verdict(
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=0.1,
-                max_tokens=256,
+                max_tokens=1024,
                 response_format={"type": "json_object"},
             )
             raw_json = response.choices[0].message.content or "{}"

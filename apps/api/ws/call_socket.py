@@ -3,25 +3,30 @@ ws/call_socket.py — WebSocket handler for live call audio processing.
 
 Route: /ws/call/{call_id}
 
-Per connection, up to three independent asyncio tasks are spawned:
-  1. bispectrum_loop  — EXPERIMENTAL, only when DSP_VOICE_DETECTION_ENABLED=true.
-                        Runs every ~150ms, emits pdi_update + ensemble_update.
-  2. tremor_loop      — EXPERIMENTAL, only when DSP_VOICE_DETECTION_ENABLED=true.
-                        Runs every ~1.5s, emits tremor_update.
-  3. stt_loop         — PRIMARY feature. Always runs. Emits factcheck_update
-                        (Whisper STT → Llama claim extraction → search → verdict).
+Per connection, up to four independent asyncio tasks are spawned:
+  1. bispectrum_loop      — EXPERIMENTAL, only when DSP_VOICE_DETECTION_ENABLED=true.
+                            Runs every ~150ms, emits pdi_update + ensemble_update.
+  2. tremor_loop          — EXPERIMENTAL, only when DSP_VOICE_DETECTION_ENABLED=true.
+                            Runs every ~1.5s, emits tremor_update.
+  3. stt_loop             — PRIMARY feature. Always runs. Emits factcheck_update
+                            (Whisper STT → Llama claim extraction → search → verdict).
+  4. evidence_capture_loop— Always runs. Polls every 200ms. While the latest verdict
+                            is CRITICAL, drains video_frames_buffer → video_frames
+                            (permanent record). Decoupled from STT cadence so frames
+                            arriving mid-pipeline are never dropped.
 
 All tasks share one AudioBufferManager via independent read cursors.
 No task blocks another — each sleeps independently.
 
 WebSocket message types sent to client:
-  {type:"connected",       call_id, dsp_enabled, ts}
-  {type:"pdi_update",      pdi_score, is_synthetic, ts}          — DSP only
-  {type:"tremor_update",   tremor_energy, has_tremor, ts}        — DSP only
-  {type:"ensemble_update", ensemble_score, label, reason, ts}    — DSP only
-  {type:"factcheck_update",status, message, evidence_urls, ts}   — always
-  {type:"rate_limited",    retry_after_ms, ts}
-  {type:"error",           message, ts}
+  {type:"connected",         call_id, dsp_enabled, ts}
+  {type:"pdi_update",        pdi_score, is_synthetic, ts}          — DSP only
+  {type:"tremor_update",     tremor_energy, has_tremor, ts}        — DSP only
+  {type:"ensemble_update",   ensemble_score, label, reason, ts}    — DSP only
+  {type:"factcheck_update",  status, message, evidence_urls, ts}   — always
+  {type:"video_frame_captured", sha256_hash, face_detected, timestamp, ts} — CRITICAL only
+  {type:"rate_limited",      retry_after_ms, ts}
+  {type:"error",             message, ts}
 """
 
 from __future__ import annotations
@@ -45,7 +50,6 @@ from factcheck.stt import STTAccumulator, transcribe_chunk
 from factcheck.verdict import generate_verdict
 from i18n.language_router import detect_language, get_hinglish_system_prompt_addon
 from ingestion.browser_mic import BrowserMicIngestion
-from forensics.video_evidence import process_test_frame
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -181,6 +185,90 @@ async def _tremor_loop(call_id: str) -> None:
             await asyncio.sleep(cadence)
 
 
+# ── Continuous Video Evidence Capture loop ─────────────────────────────────────
+
+async def _evidence_capture_loop(call_id: str) -> None:
+    """
+    Independent asyncio task: polls every 200ms and, whenever the latest
+    factcheck verdict is CRITICAL, drains video_frames_buffer into the
+    permanent video_frames list.
+
+    Design rationale
+    ─────────────────
+    Previously this logic lived inside _stt_loop, which runs at STT cadence
+    (0.5 s/chunk + 1.5–4 s for the full claim → search → verdict pipeline).
+    That created a race: if a screen-share frame arrived *while* the pipeline
+    was mid-flight, the capture check would not run for several seconds —
+    exactly the timing gap that caused Test 3 failures in live demos.
+
+    By moving capture into its own 200 ms tight loop we guarantee:
+      • Frames that land in video_frames_buffer are committed to permanent
+        storage within at most 200 ms after the verdict turns CRITICAL.
+      • The rolling buffer in video_frames_buffer (last N frames, populated
+        by the /frame HTTP endpoint) is drained continuously, not just at
+        STT boundaries.
+      • Timing mismatches — e.g., "scam" uttered, then screen-share starts
+        200 ms–3 s later — are robustly handled regardless of where the STT
+        pipeline is in its cycle.
+
+    cadence : 200ms  (5 Hz)  — fast enough to cover any realistic frame rate
+              from the client, slow enough to have negligible CPU cost.
+    """
+    CADENCE = 0.20  # seconds between polls
+
+    session = manager.get_session(call_id)
+    if not session:
+        return
+
+    logger.debug("evidence_capture_loop started: call_id=%r cadence=%.2fs", call_id, CADENCE)
+
+    while session.state not in (CallState.ENDED,):
+        try:
+            # Only commit frames while the active verdict is CRITICAL.
+            # We intentionally check the *full* factcheck_history so that a
+            # SAFE verdict after a CRITICAL one stops further capture — but
+            # while CRITICAL persists, every incoming buffer frame is saved.
+            if (
+                session.factcheck_history
+                and session.factcheck_history[-1]["status"] == "CRITICAL"
+                and session.video_frames_buffer
+            ):
+                # Snapshot and drain the rolling buffer atomically.
+                # video_frames_buffer keeps receiving new frames from the
+                # /frame endpoint (rolling, capped at 3–5); we drain them all
+                # into the permanent record on each tick.
+                frames_to_commit = session.video_frames_buffer.copy()
+                session.video_frames_buffer.clear()
+                session.video_frames.extend(frames_to_commit)
+
+                for frame in frames_to_commit:
+                    logger.info(
+                        "[evidence_capture] Committed frame to permanent record: "
+                        "call_id=%r hash=%s face=%s total_permanent=%d",
+                        call_id,
+                        frame["sha256_hash"][:12],
+                        frame["face_detected"],
+                        len(session.video_frames),
+                    )
+                    await manager.send_json(call_id, {
+                        "type": "video_frame_captured",
+                        "sha256_hash": frame["sha256_hash"],
+                        "face_detected": frame["face_detected"],
+                        "timestamp": frame["timestamp"],
+                        "total_permanent_frames": len(session.video_frames),
+                        "ts": _ts(),
+                    })
+
+            await asyncio.sleep(CADENCE)
+
+        except asyncio.CancelledError:
+            logger.debug("evidence_capture_loop cancelled: call_id=%r", call_id)
+            break
+        except Exception as exc:
+            logger.error("evidence_capture_loop error [%s]: %s", call_id, exc)
+            await asyncio.sleep(CADENCE)
+
+
 # ── STT + Fact-Check loop ──────────────────────────────────────────────────────
 
 async def _stt_loop(call_id: str) -> None:
@@ -190,6 +278,10 @@ async def _stt_loop(call_id: str) -> None:
 
     Latency: 1.5–4s end-to-end (see §1.5). Never blocks DSP loops.
     The UI shows "verifying…" (factcheck_update with status="VERIFYING") until done.
+
+    Video evidence capture is handled by the dedicated _evidence_capture_loop
+    task (200 ms cadence) — NOT here — so frame commits are never gated on
+    STT pipeline latency.
     """
     cfg = get_settings()
     session = manager.get_session(call_id)
@@ -305,47 +397,6 @@ async def _stt_loop(call_id: str) -> None:
                         )
                     )
 
-                # ── Video-frame evidence capture (stubbed) ──────────────────
-                # In production this would capture a frame from the WebRTC
-                # video stream. Here we use a bundled test image to exercise
-                # the full evidence-capture + dossier pipeline without
-                # requiring a live video feed.
-                import os as _os
-                _sample_img = _os.path.join(
-                    _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
-                    "scripts",
-                    "sample_face.jpg",
-                )
-                if _os.path.exists(_sample_img) and len(session.video_frames) == 0:
-                    # Run in executor so we don't block the event loop (cv2 I/O)
-                    from workers.executor import get_executor
-                    loop = asyncio.get_event_loop()
-                    frame_meta = await loop.run_in_executor(
-                        get_executor(),
-                        process_test_frame,
-                        _sample_img,
-                        call_id,
-                    )
-                    if frame_meta:
-                        session.video_frames.append(frame_meta)
-                        logger.info(
-                            "Video frame evidence captured: call_id=%r hash=%s face=%s",
-                            call_id,
-                            frame_meta["sha256_hash"][:12],
-                            frame_meta["face_detected"],
-                        )
-                        await manager.send_json(call_id, {
-                            "type": "video_frame_captured",
-                            "sha256_hash": frame_meta["sha256_hash"],
-                            "face_detected": frame_meta["face_detected"],
-                            "timestamp": frame_meta["timestamp"],
-                            "ts": _ts(),
-                        })
-                elif not _os.path.exists(_sample_img):
-                    logger.warning(
-                        "Video evidence stub: sample_face.jpg not found at %s", _sample_img
-                    )
-
         except asyncio.CancelledError:
             logger.debug("stt_loop cancelled: call_id=%r", call_id)
             break
@@ -403,6 +454,12 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
     # ── PRIMARY: STT / Fact-Check loop — ALWAYS runs ──────────────────────────
     stt_task = asyncio.create_task(_stt_loop(call_id))
     session.stt_task = stt_task
+
+    # ── ALWAYS: Video evidence capture loop — runs at 200ms cadence ───────────
+    # Decoupled from STT so frames are committed to permanent record within
+    # 200ms of a CRITICAL verdict, regardless of STT pipeline latency.
+    evidence_task = asyncio.create_task(_evidence_capture_loop(call_id))
+    session.evidence_task = evidence_task  # type: ignore[attr-defined]
 
     # ── EXPERIMENTAL: DSP loops — only when flag is on ────────────────────────
     bispectrum_task = None
