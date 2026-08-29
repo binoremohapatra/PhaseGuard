@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.foundation.clickable
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -240,6 +242,163 @@ private fun PDIScoreBar(score: Float, color: Color) {
                             colors = listOf(VoxColors.Safe, color)
                         )
                     )
+            )
+        }
+    }
+}
+
+/**
+ * ScamAlertBanner — high-priority red pulsing banner for CRITICAL factcheck results.
+ * Includes a Dismiss action that allows the user to stop the vibration/alert locally.
+ */
+@Composable
+fun ScamAlertBanner(
+    visible: Boolean,
+    message: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "scam_pulse")
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 600),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulse_alpha_scam"
+    )
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically { -it },
+        exit = slideOutVertically { -it },
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFF7F1D1D),   // Deep red
+                            Color(0xFF450A0A)
+                        )
+                    )
+                )
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFFEF4444),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(16.dp)
+                .alpha(pulse),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "⚠️", fontSize = 24.sp)
+                Spacer(modifier = Modifier.width(12.dp))
+                androidx.compose.foundation.layout.Column {
+                    Text(
+                        text = "Scam Detected",
+                        color = Color(0xFFFCA5A5),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.size(2.dp))
+                    Text(
+                        text = message,
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+            TextButton(onClick = onDismiss) {
+                Text("Dismiss", color = Color(0xFFFCA5A5), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+/**
+ * LimitedModeBanner — shown when the backend enters LIMITED MODE (offline/fallback checks only).
+ */
+@Composable
+fun LimitedModeBanner(
+    visible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically { -it },
+        exit = slideOutVertically { -it },
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF1E293B))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF475569),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "⚡", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "LIMITED MODE — Local protection checks only",
+                color = Color(0xFFCBD5E1),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
+
+/**
+ * UncertainBanner — gentler banner for UNCERTAIN factcheck results.
+ */
+@Composable
+fun UncertainBanner(
+    visible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically { -it },
+        exit = slideOutVertically { -it },
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color(0xFF172554)) // Deep blue
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF3B82F6),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = "🔍", fontSize = 16.sp)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(
+                text = "Verifying claims…",
+                color = Color(0xFFBFDBFE),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }

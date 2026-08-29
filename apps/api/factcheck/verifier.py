@@ -15,7 +15,7 @@ class FactCheckVerifier:
         if not self.api_key:
             logger.warning("GROQ_API_KEY not set. FactCheckVerifier will not be able to call Groq API.")
         self.client = AsyncGroq(api_key=self.api_key)
-        self.model = "llama-3.3-70b-versatile"
+        self.model = "openai/gpt-oss-120b"
 
     async def verify_transcript(self, transcript: str) -> Dict[str, Any]:
         """

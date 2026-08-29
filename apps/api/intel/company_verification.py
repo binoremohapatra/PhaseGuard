@@ -121,43 +121,75 @@ def _build_mca_search_url(name: str) -> str:
 
 # ── Public presence cross-check ───────────────────────────────────────────────
 
-async def _check_public_presence(name: str) -> tuple[bool, List[str]]:
+async def _check_presence_split(
+    name: str,
+    context_terms: Optional[str] = None,
+) -> tuple[bool, bool, List[str]]:
     """
-    Use the 3-tier search fallback to look for public presence of the entity.
-    Returns (found: bool, source_urls: list[str]).
+    Runs TWO separate searches for the entity:
+      1. Scam/fraud reports:  '{name} {context_terms} scam OR fraud reported India'
+      2. Official policy:     '{name} {context_terms} official policy India'
 
-    Absence of results for a claimed large/well-known entity is a meaningful
-    signal — real banks, government bodies and large companies almost always
-    have verifiable online coverage.
+    Returns (scam_found: bool, policy_found: bool, sources: list[str]).
     """
+    from factcheck.search import execute_resilient_search
+
+    # Truncate context_terms at word boundary (max 60 chars) so queries stay
+    # compact enough for Tavily to respond within timeout.
+    base = f'"{name}"'
+    if context_terms:
+        short_ctx = context_terms[:60].rsplit(" ", 1)[0] if len(context_terms) > 60 else context_terms
+        base += f' {short_ctx}'
+
+    # --- Query 1: scam / fraud reports ---
+    scam_query = f'{base} scam OR fraud reported India'
+    # --- Query 2: official policy ---
+    policy_query = f'{base} official policy India'
+
+    # Helper: run search AND verify entity name literally appears in snippets.
+    # Tavily advanced-search returns topically related content even for
+    # non-existent entities, so a raw success=True is not enough.
+    name_lower = name.strip('"').lower()
+
+    async def _search_with_name_check(query: str) -> bool:
+        try:
+            result = await execute_resilient_search(query)
+            if not (result and result.get("success")):
+                return False
+            context: str = result.get("context", "")
+            # Entity name must literally appear in the returned snippets
+            return name_lower in context.lower()
+        except Exception as exc:
+            logger.warning("Search failed for %r: %s", name, exc)
+            return False
+
     try:
-        from factcheck.search import _search_newsapi, _search_duckduckgo, _search_wikipedia
-        from core.config import get_settings
-
-        cfg = get_settings()
-        query = f'"{name}" official verified India'
-
-        # Tier 1: NewsAPI
-        if cfg.newsapi_key:
-            results = await _search_newsapi(query, cfg.newsapi_key)
-            if results:
-                return True, [r["url"] for r in results if r.get("url")]
-
-        # Tier 2: DuckDuckGo
-        results = await _search_duckduckgo(query)
-        if results:
-            return True, [r["url"] for r in results if r.get("url")]
-
-        # Tier 3: Wikipedia
-        results = await _search_wikipedia(query)
-        if results:
-            return True, [r["url"] for r in results if r.get("url")]
-
-        return False, []
-
+        scam_found  = await _search_with_name_check(scam_query)
     except Exception as exc:
-        logger.warning("Public presence check failed for %r: %s", name, exc)
-        return False, []
+        logger.warning("Scam-check search failed for %r: %s", name, exc)
+        scam_found = False
+
+    try:
+        policy_found = await _search_with_name_check(policy_query)
+    except Exception as exc:
+        logger.warning("Policy-check search failed for %r: %s", name, exc)
+        policy_found = False
+
+
+    sources: List[str] = []
+    if scam_found:
+        sources.append("scam-reports search")
+    if policy_found:
+        sources.append("official-policy search")
+
+    return scam_found, policy_found, sources
+
+
+# Keep backward-compat thin wrapper used by other callers
+async def _check_public_presence(name: str, context_terms: Optional[str] = None) -> tuple[bool, List[str]]:
+    scam_found, policy_found, sources = await _check_presence_split(name, context_terms)
+    return (scam_found or policy_found), sources
+
 
 
 # ── Main entry point ──────────────────────────────────────────────────────────
@@ -165,6 +197,8 @@ async def _check_public_presence(name: str) -> tuple[bool, List[str]]:
 async def verify_entity(
     name: str,
     domain: Optional[str] = None,
+    sub_entity: Optional[str] = None,
+    context_terms: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Produce a verification signal dossier for a claimed entity/company.
@@ -172,12 +206,11 @@ async def verify_entity(
     Parameters
     ----------
     name : str
-        The entity name as extracted from the call (e.g. "Google HR",
-        "State Bank of India", "XYZ Global Refund Services").
+        The parent entity name (e.g. "Google").
     domain : str or None
-        An optional domain/URL associated with the entity (e.g. from a
-        WhatsApp link or caller reference). Triggers WHOIS lookup.
-
+        An optional domain/URL associated with the entity.
+    sub_entity: str or None
+        An optional claimed sub-entity or authority (e.g. "Google HR").
     Returns
     -------
     dict with keys:
@@ -187,7 +220,7 @@ async def verify_entity(
 
     IMPORTANT: All fields are investigative signals, not legal conclusions.
     """
-    logger.info("Verifying entity: %r (domain=%r)", name, domain)
+    logger.info("Verifying entity: %r (sub_entity=%r, domain=%r)", name, sub_entity, domain)
 
     # ── MCA link (no scraping, human-usable) ──────────────────────────────────
     mca_url = _build_mca_search_url(name)
@@ -202,36 +235,45 @@ async def verify_entity(
         if bare_domain:
             domain_age_days, domain_flag = _check_domain_age(bare_domain)
 
-    # ── Public presence check (async search) ──────────────────────────────────
-    presence_found, presence_sources = await _check_public_presence(name)
+    # ── Public presence check — split into scam vs policy ────────────────────
+    parent_scam, parent_policy, presence_sources = await _check_presence_split(name, context_terms)
+    presence_found = parent_scam or parent_policy
+
+    sub_scam:   Optional[bool] = None
+    sub_policy: Optional[bool] = None
+    if sub_entity and sub_entity.lower() != name.lower():
+        sub_scam, sub_policy, _ = await _check_presence_split(sub_entity, context_terms)
 
     # ── Confidence note builder ───────────────────────────────────────────────
     signals: List[str] = []
 
     if domain_flag:
         signals.append(f"Domain: {domain_flag}.")
-    if not presence_found:
-        signals.append(
-            f"No independent public coverage found for \"{name}\" via news/"
-            f"search/Wikipedia — real banks, government bodies, and large "
-            f"companies typically have verifiable online presence."
-        )
-    else:
-        signals.append(
-            f"Public presence found for \"{name}\" in search/news results."
-        )
 
-    if signals:
-        note = (
-            "SIGNAL ONLY \u2014 for human judgment: "
-            + " ".join(signals)
-            + " Verify manually via MCA link before drawing conclusions."
-        )
-    else:
-        note = (
-            f"No caution signals detected for \"{name}\". "
-            "This does not guarantee legitimacy — always verify independently."
-        )
+    def _fmt_split(scam: Optional[bool], policy: Optional[bool], label: str) -> str:
+        scam_str   = "scam/fraud reports: FOUND"       if scam   else "scam/fraud reports: none"
+        policy_str = "official policy mentions: FOUND" if policy else "official policy mentions: none"
+        return f"{label} -> {scam_str} | {policy_str}"
+
+    # Parent entity line
+    signals.append(_fmt_split(parent_scam, parent_policy, f'"{name}"'))
+
+    # Sub-entity line (if checked)
+    if sub_entity and sub_entity.lower() != name.lower() and sub_scam is not None:
+        signals.append(_fmt_split(sub_scam, sub_policy, f'sub-entity "{sub_entity}"'))
+
+        # Strong impersonation signal: parent real but sub-entity has zero trace
+        if presence_found and not sub_scam and not sub_policy:
+            signals.append(
+                f"⚠ IMPERSONATION SIGNAL: Parent '{name}' has web presence but "
+                f"claimed sub-entity '{sub_entity}' has NO scam reports AND no official policy trace."
+            )
+
+    note = (
+        "SIGNAL ONLY — for human judgment: "
+        + " | ".join(signals)
+        + " | Verify manually via MCA link before drawing conclusions."
+    )
 
     return {
         "entity_name":            name,

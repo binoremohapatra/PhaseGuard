@@ -9,6 +9,10 @@ import android.content.pm.ServiceInfo
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
+import android.content.Context
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.voxshield.MainActivity
@@ -102,6 +106,7 @@ class VoxShieldForegroundService : Service() {
     private var messageListenerJob: Job? = null
     private var callStateListenerJob: Job? = null
     private var heartbeatJob: Job? = null
+    private var vibrationJob: Job? = null
 
     // ─── Service lifecycle ────────────────────────────────────────────────────
 
@@ -235,14 +240,27 @@ class VoxShieldForegroundService : Service() {
                                 pdiScore = message.pdiScore,
                                 verdict = verdict
                             )
-                            // Fire heads-up notification for high-confidence scam alerts
-                            if (message.pdiScore >= 0.85f) {
-                                showScamAlertNotification(message.pdiScore, "High fraud probability detected")
+                            updateNotification()
+                        }
+                        is BackendMessage.FactCheckUpdate -> {
+                            val msg = message.verdictMessage ?: ""
+                            _protectionState.value = _protectionState.value.copy(
+                                factcheckStatus = message.status,
+                                latestVerdictMessage = msg
+                            )
+                            if (message.status == "CRITICAL") {
+                                triggerCriticalVibration()
+                                showScamAlertNotification(message.confidence, msg.ifEmpty { "Scam Detected" })
+                            } else if (message.status == "SAFE") {
+                                cancelVibration()
                             }
                             updateNotification()
                         }
-                        is BackendMessage.ScamAlert -> {
-                            showScamAlertNotification(message.pdiScore, message.reason)
+                        is BackendMessage.ModeUpdate -> {
+                            _protectionState.value = _protectionState.value.copy(
+                                isLimitedMode = message.mode == "limited"
+                            )
+                            updateNotification()
                         }
                         is BackendMessage.TranscriptChunk -> {
                             _protectionState.value = _protectionState.value.copy(
@@ -272,6 +290,59 @@ class VoxShieldForegroundService : Service() {
                 }
             }
         }
+    }
+
+    // ─── Alert Management ─────────────────────────────────────────────────────
+
+    fun dismissAlert() {
+        _protectionState.value = _protectionState.value.copy(
+            factcheckStatus = "SAFE",
+            latestVerdictMessage = ""
+        )
+        cancelVibration()
+        updateNotification()
+    }
+
+    // ─── Vibration ────────────────────────────────────────────────────────────
+
+    private fun triggerCriticalVibration() {
+        // Prevent overlapping jobs
+        if (vibrationJob?.isActive == true) return
+        
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        if (!vibrator.hasVibrator()) return
+
+        val timings = longArrayOf(0, 200, 100, 400, 100, 800)
+        val amplitudes = intArrayOf(0, 255, 0, 255, 0, 255)
+        val effect = VibrationEffect.createWaveform(timings, amplitudes, 0) // 0 = repeat indefinitely
+
+        vibrator.vibrate(effect)
+
+        // Safety cap: Automatically stop vibration after 15 seconds to save battery/annoyance
+        vibrationJob = serviceScope.launch {
+            delay(15_000L)
+            cancelVibration()
+        }
+    }
+
+    private fun cancelVibration() {
+        vibrationJob?.cancel()
+        vibrationJob = null
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val vibratorManager = getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            vibratorManager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        vibrator.cancel()
     }
 
     // ─── Heartbeat (watchdog) ─────────────────────────────────────────────────
@@ -382,5 +453,8 @@ data class ProtectionState(
     val pdiScore: Float = 0f,
     val verdict: PdiVerdict = PdiVerdict.UNKNOWN,
     val wsConnectionState: WsConnectionState = WsConnectionState.Disconnected,
-    val latestTranscript: String = ""
+    val latestTranscript: String = "",
+    val factcheckStatus: String = "SAFE",
+    val latestVerdictMessage: String = "",
+    val isLimitedMode: Boolean = false
 )

@@ -36,3 +36,14 @@ MANIFEST
 .vscode/
 *.swp
 *.swo
+
+# Tests and Binaries
+test_venv/
+output.log
+dossier_*.pdf
+test_*.py
+run_test*.py
+smoke_test_*.py
+cloudflared*.exe
+fake_entity_output.txt
+reputation_store.json

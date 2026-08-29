@@ -126,7 +126,10 @@ class CallWebSocketClient(
         val url = "$backendWsBaseUrl/ws/call/$callId"
         Log.d(TAG, "Connecting to $url (attempt ${reconnectAttempts + 1})")
 
-        val request = Request.Builder().url(url).build()
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .build()
         webSocket = httpClient.newWebSocket(request, object : WebSocketListener() {
 
             override fun onOpen(ws: WebSocket, response: Response) {
@@ -184,7 +187,7 @@ class CallWebSocketClient(
                 "factcheck_update" -> parseFactCheck(json)
                 "transcript_chunk" -> parseTranscript(json)
                 "session_status"   -> parseSessionStatus(json)
-                "scam_alert"       -> parseScamAlert(json)
+                "mode_update"      -> parseModeUpdate(json)
                 else               -> BackendMessage.Unknown(envelope.type)
             }
             scope.launch { _messages.emit(message) }
@@ -209,9 +212,9 @@ class CallWebSocketClient(
         moshi.adapter(BackendMessage.SessionStatus::class.java).fromJson(json)
             ?: BackendMessage.Unknown("session_status_parse_fail")
 
-    private fun parseScamAlert(json: String) =
-        moshi.adapter(BackendMessage.ScamAlert::class.java).fromJson(json)
-            ?: BackendMessage.Unknown("scam_alert_parse_fail")
+    private fun parseModeUpdate(json: String) =
+        moshi.adapter(BackendMessage.ModeUpdate::class.java).fromJson(json)
+            ?: BackendMessage.Unknown("mode_update_parse_fail")
 }
 
 // ─── Connection state ADT ────────────────────────────────────────────────────

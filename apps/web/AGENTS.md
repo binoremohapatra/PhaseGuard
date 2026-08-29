@@ -7,3 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Known Project State & Constraints (PhaseGuard)
+* **DSP Voice-Detection**: Remains disabled due to an underlying accuracy issue (deployment will not fix this).
+* **Google Search & SMS**: Google Search remains a stub and SMS remains simulated. Do not attempt to enable these real services until the billing/card issues are resolved.

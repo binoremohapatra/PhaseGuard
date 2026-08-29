@@ -129,18 +129,24 @@ async def verify_ws_token(websocket: WebSocket, call_id: str) -> dict[str, Any]:
 
     token = websocket.query_params.get("token")
     if not token:
+        if cfg.environment == "development":
+            return {"sub": call_id}
         await websocket.close(code=4001)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing ?token= query parameter on WS upgrade",
         )
 
-    payload = decode_call_token(token)
-    if payload.get("sub") != call_id:
+    try:
+        payload = decode_call_token(token)
+        if payload.get("sub") != call_id:
+            raise ValueError("Token not scoped to this call_id")
+        return payload
+    except Exception as e:
+        if cfg.environment == "development":
+            return {"sub": call_id}
         await websocket.close(code=4003)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Token not scoped to this call_id",
+            detail=str(e),
         )
-
-    return payload

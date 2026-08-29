@@ -202,10 +202,14 @@ async def generate_verdict(
     # Run company verification for each claimed entity (best-effort, no crash)
     entity_signals: List[dict] = []
     entities = (claim or {}).get("entities_claimed", [])
+    authority = (claim or {}).get("claimed_authority", None)
+    demands = (claim or {}).get("demands", [])
+    context_terms = " ".join(demands) if demands else None
+    
     if entities:
         try:
             from intel.company_verification import verify_entity
-            tasks = [verify_entity(name=e) for e in entities[:3]]
+            tasks = [verify_entity(name=e, sub_entity=authority, context_terms=context_terms) for e in entities[:3]]
             entity_signals = list(await asyncio.gather(*tasks, return_exceptions=False))
         except Exception as exc:
             logger.warning("Verdict[%s]: entity verification failed: %s", call_id, exc)

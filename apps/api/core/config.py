@@ -46,7 +46,7 @@ class Settings(BaseSettings):
     # ── Groq (STT + LLM) ──────────────────────────────────────────────────────
     groq_api_key: str = Field(default="", description="Groq API key")
     groq_stt_model: str = Field(default="whisper-large-v3")
-    groq_llm_model: str = Field(default="llama-3.3-70b-versatile")
+    groq_llm_model: str = Field(default="openai/gpt-oss-120b")
 
     # ── NewsAPI (3-tier search Tier 1) ────────────────────────────────────────
     # Get free key (no card) at: https://newsapi.org/register
@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # Kept in settings so the key can be dropped in later without code change.
     google_search_api_key: str = Field(default="", description="Google Custom Search API key (disabled)")
     google_search_engine_id: str = Field(default="", description="Google Custom Search Engine ID (disabled)")
+
+    # ── Serper (Alternative Google Search) ────────────────────────────────────
+    serper_api_key: str = Field(default="", description="Serper.dev API key")
+    
+    # ── Tavily (AI Search - Primary Factcheck) ────────────────────────────────
+    tavily_api_key: str = Field(default="", description="Tavily API key")
 
     # ── TTS Backend ────────────────────────────────────────────────────────────
     tts_backend: str = Field(default="gtts", description="TTS backend (gtts | mock)")
@@ -101,6 +107,8 @@ class Settings(BaseSettings):
             "results vs gTTS. Enable only for research/tuning, not live demos."
         ),
     )
+
+    hf_api_token: str = Field(default="", description="Hugging Face Inference API token")
 
     # ── DSP tuning ────────────────────────────────────────────────────────────
     sample_rate: int = Field(default=16000, description="Expected audio sample rate (Hz)")
@@ -190,15 +198,26 @@ class Settings(BaseSettings):
         else:
             print("[WARN] Groq (STT + LLM): NOT CONFIGURED")
 
-        # 3-tier search status
+        # Search Fallback Chain (matches factcheck/search.py)
         print("\n  [Search Fallback Chain]")
-        if self.newsapi_key:
-            print("  [OK]   Tier 1 - NewsAPI: ACTIVE")
+        if self.tavily_api_key:
+            print("  [OK]   Tier 1 - Tavily API (Primary): ACTIVE")
         else:
-            print("  [WARN] Tier 1 - NewsAPI: NOT CONFIGURED (add NEWSAPI_KEY for best scam-news coverage)")
-        print("  [OK]   Tier 2 - DuckDuckGo: ACTIVE (no key required)")
-        print("  [OK]   Tier 3 - Wikipedia: ACTIVE (no key required)")
-        print("  [INFO] Google Custom Search: STUBBED (billing not enabled for this deployment)")
+            print("  [WARN] Tier 1 - Tavily API: NOT CONFIGURED (add TAVILY_API_KEY for best AI search)")
+        
+        print("  [OK]   Tier 2 - Jina AI: ACTIVE (no key required)")
+        
+        if self.serper_api_key:
+            print("  [OK]   Tier 3 - Serper.dev: ACTIVE")
+        else:
+            print("  [INFO] Tier 3 - Serper.dev: NOT CONFIGURED")
+            
+        print("  [OK]   Tier 4 - DuckDuckGo: ACTIVE (no key required)")
+        
+        if self.newsapi_key:
+            print("  [OK]   NewsAPI (Threat Intel): ACTIVE")
+        else:
+            print("  [WARN] NewsAPI (Threat Intel): NOT CONFIGURED (add NEWSAPI_KEY)")
 
         print(f"\n[OK] TTS Backend: ACTIVE ({self.tts_backend})")
         print("[OK] Company Verification (WHOIS + MCA link + public-presence check): ACTIVE")

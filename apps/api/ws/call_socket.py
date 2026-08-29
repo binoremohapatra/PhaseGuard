@@ -185,6 +185,57 @@ async def _tremor_loop(call_id: str) -> None:
             await asyncio.sleep(cadence)
 
 
+# ── HuggingFace ML loop ────────────────────────────────────────────────────────
+
+async def _hf_ml_loop(call_id: str) -> None:
+    """
+    Independent asyncio task: reads audio window every ~3.0s,
+    sends to HuggingFace Inference API for deepfake/spoof detection.
+    """
+    cfg = get_settings()
+    session = manager.get_session(call_id)
+    if not session or not cfg.hf_api_token:
+        return
+
+    buf = session.buffer
+    # Use a 3s window for better ML context
+    window_n = int(3.0 * cfg.sample_rate)
+    cadence = 3.0
+
+    from dsp.hf_ml import analyze_audio_hf
+
+    logger.debug("hf_ml_loop started: call_id=%r window=%d cadence=%.1fs",
+                 call_id, window_n, cadence)
+
+    while session.state not in (CallState.ENDED,):
+        try:
+            window = buf.get_window("hf_ml", window_n)
+            if window is None:
+                await asyncio.sleep(cadence / 2)
+                continue
+
+            result = await analyze_audio_hf(window, fs=cfg.sample_rate)
+            
+            if result.get("status") == "success":
+                await manager.send_json(call_id, {
+                    "type": "hf_ml_update",
+                    "is_synthetic": result.get("is_synthetic"),
+                    "top_label": result.get("top_label"),
+                    "score": round(result.get("score", 0), 4),
+                    "compute_ms": round(result.get("compute_ms", 0), 1),
+                    "ts": _ts(),
+                })
+            
+            await asyncio.sleep(cadence)
+
+        except asyncio.CancelledError:
+            logger.debug("hf_ml_loop cancelled: call_id=%r", call_id)
+            break
+        except Exception as exc:
+            logger.error("hf_ml_loop error [%s]: %s", call_id, exc)
+            await asyncio.sleep(cadence)
+
+
 # ── Continuous Video Evidence Capture loop ─────────────────────────────────────
 
 async def _evidence_capture_loop(call_id: str) -> None:
@@ -472,6 +523,13 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
         logger.info("DSP loops ENABLED for call_id=%r", call_id)
     else:
         logger.info("DSP loops DISABLED for call_id=%r (DSP_VOICE_DETECTION_ENABLED=false)", call_id)
+
+    # ── HF ML loop — only when token is present ───────────────────────────────
+    hf_task = None
+    if cfg.hf_api_token:
+        hf_task = asyncio.create_task(_hf_ml_loop(call_id))
+        session.hf_task = hf_task  # type: ignore[attr-defined]
+        logger.info("HF ML loop ENABLED for call_id=%r", call_id)
 
     try:
         async for message in websocket.iter_bytes():

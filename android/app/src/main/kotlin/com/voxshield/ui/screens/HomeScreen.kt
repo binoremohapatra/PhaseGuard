@@ -31,6 +31,9 @@ import com.voxshield.service.VoxShieldForegroundService
 import com.voxshield.call.VoxCallState
 import com.voxshield.ui.components.ProtectionBanner
 import com.voxshield.ui.components.SpeakerBanner
+import com.voxshield.ui.components.ScamAlertBanner
+import com.voxshield.ui.components.LimitedModeBanner
+import com.voxshield.ui.components.UncertainBanner
 import com.voxshield.ui.components.WaveformIndicator
 import com.voxshield.ui.theme.VoxColors
 
@@ -55,7 +58,8 @@ fun HomeScreen(
     protectionState: ProtectionState,
     amplitude: Float,
     backendUrl: String,
-    onBackendUrlChange: (String) -> Unit
+    onBackendUrlChange: (String) -> Unit,
+    onDismissAlert: () -> Unit
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
@@ -179,6 +183,24 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // ── Call state banners ────────────────────────────────────────────
+
+            ScamAlertBanner(
+                visible = isActive && protectionState.factcheckStatus == "CRITICAL",
+                message = protectionState.latestVerdictMessage.ifEmpty { "Possible scam detected" },
+                onDismiss = onDismissAlert,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            )
+
+            LimitedModeBanner(
+                visible = isActive && protectionState.isLimitedMode,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            )
+
+            UncertainBanner(
+                visible = isActive && protectionState.factcheckStatus == "UNCERTAIN",
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            )
+
             SpeakerBanner(
                 visible = isActive && callActive && !protectionState.isSpeakerOn,
                 modifier = Modifier.fillMaxWidth()

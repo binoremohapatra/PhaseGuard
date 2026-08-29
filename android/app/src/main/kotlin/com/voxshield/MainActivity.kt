@@ -109,6 +109,9 @@ class MainActivity : ComponentActivity() {
                                     }
                                     startForegroundService(intent)
                                 }
+                            },
+                            onDismissAlert = {
+                                foregroundService?.dismissAlert()
                             }
                         )
                     }

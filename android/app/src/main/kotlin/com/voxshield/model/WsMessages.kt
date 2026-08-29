@@ -59,17 +59,21 @@ sealed class BackendMessage {
      * Backend emits this when the STT pipeline detects a verifiable claim
      * (e.g., "your account has been locked", "IRS is calling").
      *
-     * [claim]      The detected claim text
-     * [result]     Verdict: "true" | "false" | "unverifiable"
-     * [confidence] Confidence in the fact-check result
+     * [status]         Action-level verdict: "SAFE" | "CRITICAL" | "UNCERTAIN"
+     * [claim]          The detected claim text
+     * [result]         Legacy field: "true" | "false" | "unverifiable"
+     * [verdictMessage] Human-readable description of the verdict reason (nullable)
+     * [confidence]     Confidence in the fact-check result
      */
     @JsonClass(generateAdapter = true)
     data class FactCheckUpdate(
-        @Json(name = "call_id")    val callId: String,
-        @Json(name = "claim")      val claim: String,
-        @Json(name = "result")     val result: String,         // "true" | "false" | "unverifiable"
-        @Json(name = "confidence") val confidence: Float,
-        @Json(name = "timestamp")  val timestamp: Long
+        @Json(name = "call_id")         val callId: String,
+        @Json(name = "status")          val status: String = "UNCERTAIN",  // SAFE | CRITICAL | UNCERTAIN
+        @Json(name = "claim")           val claim: String = "",
+        @Json(name = "result")          val result: String = "unverifiable",
+        @Json(name = "verdict_message") val verdictMessage: String? = null,
+        @Json(name = "confidence")      val confidence: Float = 0f,
+        @Json(name = "timestamp")       val timestamp: Long = 0L
     ) : BackendMessage()
 
     /**
@@ -96,16 +100,22 @@ sealed class BackendMessage {
         @Json(name = "timestamp") val timestamp: Long
     ) : BackendMessage()
 
+    // Removed ScamAlert here as backend does not send 'scam_alert' messages.
+    // CRITICAL alerts are exclusively sent via FactCheckUpdate with status="CRITICAL".
+
     /**
-     * Scam alert — high-confidence detection that warrants immediate user notification.
-     * Backend emits this when pdi_score crosses a configured threshold.
+     * Backend pipeline mode update.
+     * Emitted when the server switches between full and limited (offline) mode.
+     *
+     * [mode] "full" = all checks active | "limited" = local-only fallback
+     *        (corresponds to the server-side offline_fallback LIMITED MODE)
      */
     @JsonClass(generateAdapter = true)
-    data class ScamAlert(
+    data class ModeUpdate(
         @Json(name = "call_id")   val callId: String,
-        @Json(name = "pdi_score") val pdiScore: Float,
-        @Json(name = "reason")    val reason: String,          // Human-readable alert reason
-        @Json(name = "timestamp") val timestamp: Long
+        @Json(name = "mode")      val mode: String,            // "full" | "limited"
+        @Json(name = "message")   val message: String? = null,
+        @Json(name = "timestamp") val timestamp: Long = 0L
     ) : BackendMessage()
 
     /** Fallback for unrecognised message types — preserves forward-compatibility. */
@@ -115,16 +125,16 @@ sealed class BackendMessage {
 // ─── Verdict helpers ───────────────────────────────────────────────────────────
 
 enum class PdiVerdict(val label: String, val emoji: String) {
-    SAFE("Safe", "✅"),
-    SUSPICIOUS("Suspicious", "⚠️"),
-    SCAM("Scam Detected", "🚨"),
-    UNKNOWN("Analyzing…", "🔍");
+    SAFE("Safe", "\u2705"),
+    SUSPICIOUS("Suspicious", "\u26a0\ufe0f"),
+    SCAM("Scam Detected", "\uD83D\uDEA8"),
+    UNKNOWN("Analyzing\u2026", "\uD83D\uDD0D");
 
     companion object {
         fun from(raw: String?) = when (raw?.lowercase()) {
             "safe"       -> SAFE
             "suspicious" -> SUSPICIOUS
-            "scam"       -> SCAM
+            "scam", "critical" -> SCAM   // factcheck_update CRITICAL maps to SCAM
             else         -> UNKNOWN
         }
     }

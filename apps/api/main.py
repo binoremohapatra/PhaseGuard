@@ -94,11 +94,12 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Rate limit exceeded", "retry_after": str(exc.retry_after)},
     )
 
-# CORS — in production, restrict to your frontend domain
+# CORS — temporarily allow all origins until deployed frontend URL is known
+# TODO: Restrict to the specific frontend domain once deployed
 cfg = get_settings()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if cfg.environment == "development" else ["https://your-frontend-domain.com"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
