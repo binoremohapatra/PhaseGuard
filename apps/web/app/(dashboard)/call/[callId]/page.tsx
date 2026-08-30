@@ -34,6 +34,26 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screenCaptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  const playScambaiterAudio = async (buffer: ArrayBuffer) => {
+    const audioCtx = audioContextRef.current;
+    if (!audioCtx) {
+      console.warn("AudioContext not initialized, cannot play scambaiter audio");
+      return;
+    }
+
+    try {
+      // Use decodeAudioData which safely handles MP3 bytes from gTTS as well as PCM/WAV
+      // This is crucial because if pydub isn't installed on the backend, it sends raw MP3.
+      const audioBuffer = await audioCtx.decodeAudioData(buffer.slice(0));
+      const source = audioCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioCtx.destination);
+      source.start();
+    } catch (err) {
+      console.error("Failed to decode scambaiter audio data:", err);
+    }
+  };
+
   useEffect(() => {
     async function initializeCall() {
       let token = new URLSearchParams(window.location.search).get('token');
@@ -90,7 +110,10 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
             setVideoFrameCount((c) => c + 1);
           }
         },
-        (newStatus) => setStatus(newStatus)
+        (newStatus) => setStatus(newStatus),
+        (buffer: ArrayBuffer) => {
+          playScambaiterAudio(buffer);
+        }
       );
 
       wsClientRef.current = client;

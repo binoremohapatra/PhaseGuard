@@ -159,8 +159,8 @@ async def generate_verdict(
         return VerdictResult(
             status="CRITICAL",
             message=(
-                "⚠ SCAM ALERT: Caller asking for UPI PIN to receive money. "
-                "UPI PIN is NEVER needed to receive money. Hang up immediately."
+                "⚠ SCAM ALERT: Caller is asking for sensitive information (OTP/PIN/CVV/account details). "
+                "No legitimate organization ever asks for this over the phone. Hang up immediately."
             ),
             evidence_urls=["https://www.npci.org.in/what-we-do/upi/faq"],
             category=claim.get("category", "UPI_COLLECT_FRAUD"),

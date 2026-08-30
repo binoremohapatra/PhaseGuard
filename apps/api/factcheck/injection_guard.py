@@ -39,7 +39,9 @@ logger = logging.getLogger(__name__)
 # it is a hard baseline that is LLM-independent and cannot be overridden.
 _INJECTION_PATTERNS: List[re.Pattern] = [
     re.compile(r"ignore\s+(?:all\s+)?previous\s+instructions?", re.IGNORECASE),
+    re.compile(r"ignore\s+(?:your\s+)?(?:fraud|scam|security)\s+(?:detection|system)", re.IGNORECASE),
     re.compile(r"disregard\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|prompts?)", re.IGNORECASE),
+    re.compile(r"disregard\s+(?:the\s+)?(?:scam\s+categories|scam\s+list|rules)", re.IGNORECASE),
     re.compile(r"mark\s+this\s+(?:call\s+)?(?:as\s+)?safe", re.IGNORECASE),
     re.compile(r"override\s+(?:your\s+)?(?:safety|security)\s+(?:rules?|instructions?)", re.IGNORECASE),
     re.compile(r"you\s+are\s+now\s+(?:a\s+)?(?:different|new|another)\s+(?:ai|assistant|bot|model)", re.IGNORECASE),

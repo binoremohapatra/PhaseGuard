@@ -66,4 +66,16 @@ object PermissionUtils {
     /** @return true if RECORD_AUDIO and phone state permissions are both granted. */
     fun hasFullPermissions(context: Context): Boolean =
         hasRecordAudio(context) && hasPhoneState(context) && hasPostNotifications(context)
+
+    /**
+     * @return true if READ_CONTACTS permission is granted.
+     *
+     * This is an optional permission — the app degrades gracefully if denied
+     * (unknown-caller detection falls back to treating all callers as unknown,
+     * which means the protection prompt is shown for all calls — fail-open).
+     */
+    fun hasReadContacts(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(
+            context, Manifest.permission.READ_CONTACTS
+        ) == PackageManager.PERMISSION_GRANTED
 }

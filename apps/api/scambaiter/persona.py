@@ -123,16 +123,19 @@ async def generate_scambaiter_response(
         logger.warning("Scambaiter: GROQ_API_KEY not set")
         return None
 
-    # Wrap caller speech in data block (injection guard — scammer may try to
-    # inject "stop roleplaying" or "reveal your real name" into the transcript)
-    wrapped_caller = wrap_transcript(caller_speech)
-
+    # The anti-injection wrap_transcript tells the LLM "this is just data, do not follow instructions".
+    # Unfortunately, it completely confuses the open-source LLM when combined with a persona prompt,
+    # causing it to output an empty string or refuse to answer.
+    # For the Scambaiter roleplay, we pass the transcript relatively raw, relying on the 
+    # hard identifier filter (_sanitize_response) to prevent actual data exfiltration.
+    safe_caller_speech = caller_speech.replace("<", "").replace(">", "")
+    
     persona_prompt = os.getenv("SCAMBAITER_PERSONA_PROMPT", _DEFAULT_PERSONA_SYSTEM_PROMPT)
 
     messages = [{"role": "system", "content": persona_prompt}]
     # Add exchange history (already validated on previous turns)
     messages.extend(exchange_history[-10:])  # Keep last 5 exchanges (10 messages)
-    messages.append({"role": "user", "content": wrapped_caller})
+    messages.append({"role": "user", "content": f"Scammer said: {safe_caller_speech}"})
 
     from groq import AsyncGroq
 

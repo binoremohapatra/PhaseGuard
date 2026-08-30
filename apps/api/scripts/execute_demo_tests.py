@@ -1,3 +1,4 @@
+from dotenv import load_dotenv; load_dotenv(r'd:\PhaseGuard\apps\api\.env')
 import asyncio
 import os
 import sys
@@ -40,13 +41,29 @@ async def run_tests():
         transcript = session.transcript_history[0]
         extraction = await extractor.extract(transcript, call_id=call_id)
         
+        print(f"           [RAW EXTRACTION JSON] {json.dumps(extraction, indent=2)}")
+        
+        # Explicitly print company verification output to demonstrate compound check
+        from intel.company_verification import verify_entity
+        entities = extraction.get("entities_claimed", [])
+        authority = extraction.get("claimed_authority")
+        demands = extraction.get("demands", [])
+        context_terms = " ".join(demands) if demands else None
+        
+        if entities:
+            print("           [COMPANY VERIFICATION] Running compound check...")
+            for e in entities:
+                sig = await verify_entity(name=e, sub_entity=authority, context_terms=context_terms)
+                print(f"             -> Parent '{sig.get('entity_name')}': presence={sig.get('public_presence_found')}")
+                print(f"             -> Verdict Note: {sig.get('confidence_note')}")
+                
         verifier = SearchVerifier()
         search_res = await verifier.verify_claim(extraction, call_id=call_id)
         
         verdict = await generate_verdict(transcript, extraction, search_res, call_id)
         
         evidence = (
-            f"Extracted Entity: {extraction.get('entity')}, "
+            f"Extracted Entity: {extraction.get('entities_claimed', [])}, "
             f"Search tier: {search_res.get('source')}, "
             f"Verdict: {verdict.get('status')} (Hardcoded UPI Rule: {verdict.get('deterministic_rule_fired', False)})"
         )
@@ -180,6 +197,7 @@ async def run_tests():
             real_data = {}
 
             try:
+                # pyrefly: ignore [missing-import]
                 import pdfplumber
                 with pdfplumber.open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), f"dossier_{call_id[:8]}.pdf")) as _pdf:
                     full_text = "\n".join(page.extract_text() or "" for page in _pdf.pages)

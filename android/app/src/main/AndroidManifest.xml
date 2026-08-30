@@ -60,6 +60,21 @@
         android:name="android.permission.POST_NOTIFICATIONS"
         android:minSdkVersion="33" />
 
+    <!-- ================================================================
+         READ_CONTACTS — Optional runtime permission.
+         Used ONLY to check whether an incoming call's number is saved in
+         the user's contacts, so we can surface a prominent protection
+         prompt only for unknown callers.
+
+         We do NOT read, store, or transmit the contact list itself.
+         We do NOT access contact names, email addresses, or any other
+         contact fields — only PhoneLookup (does number exist? yes/no).
+
+         If this permission is denied, we fall open: the protection prompt
+         is shown for all incoming calls (never silently hidden).
+         ================================================================ -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
     <application
         android:name=".VoxShieldApplication"
         android:allowBackup="false"

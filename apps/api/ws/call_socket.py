@@ -320,6 +320,80 @@ async def _evidence_capture_loop(call_id: str) -> None:
             await asyncio.sleep(CADENCE)
 
 
+# ── Scambaiter Turn Execution ──────────────────────────────────────────────────
+
+async def _fire_scambaiter_turn(call_id: str, caller_speech: str) -> None:
+    """
+    Generate and synthesize a scambaiter response, then stream binary audio 
+    directly back over the WebSocket.
+    """
+    session = manager.get_session(call_id)
+    if not session or not caller_speech.strip():
+        return
+        
+    from scambaiter.persona import generate_scambaiter_response
+    from scambaiter.tts import synthesize_speech
+    
+    logger.info("Scambaiter Turn Started for call_id=%r with input: %r", call_id, caller_speech)
+    
+    # 1. Generate text response
+    response_text = await generate_scambaiter_response(
+        caller_speech=caller_speech,
+        exchange_history=session.scambaiter_log,
+        call_id=call_id
+    )
+    if not response_text:
+        return
+        
+    # Append to history
+    session.scambaiter_log.append({"role": "user", "content": caller_speech})
+    session.scambaiter_log.append({"role": "assistant", "content": response_text})
+    
+    # 2. Synthesize audio
+    audio_bytes = await synthesize_speech(response_text, call_id=call_id)
+    if not audio_bytes:
+        return
+        
+    # 3. Send binary audio to frontend
+    if session.websocket and session.state not in (CallState.ENDED,):
+        try:
+            await session.websocket.send_bytes(audio_bytes)
+            # Add verifiable logging as requested by user
+            logger.info("[Scambaiter] Generated reply: %r | Audio bytes: %d | Sent over WS", response_text, len(audio_bytes))
+        except Exception as exc:
+            logger.error("Scambaiter failed to send audio: %s", exc)
+
+
+async def _scambaiter_loop(call_id: str) -> None:
+    """
+    Independent asyncio task: waits for transcribed caller speech,
+    then executes the Scambaiter persona loop sequentially.
+    """
+    session = manager.get_session(call_id)
+    if not session:
+        return
+
+    logger.debug("scambaiter_loop started: call_id=%r", call_id)
+
+    while session.state not in (CallState.ENDED,):
+        try:
+            try:
+                # Use a timeout so we can periodically check session.state
+                transcript_window = await asyncio.wait_for(session.scambaiter_queue.get(), timeout=1.0)
+            except asyncio.TimeoutError:
+                continue
+
+            # Process the turn
+            await _fire_scambaiter_turn(call_id, transcript_window)
+
+        except asyncio.CancelledError:
+            logger.debug("scambaiter_loop cancelled: call_id=%r", call_id)
+            break
+        except Exception as exc:
+            logger.error("scambaiter_loop error [%s]: %s", call_id, exc)
+            await asyncio.sleep(1.0)
+
+
 # ── STT + Fact-Check loop ──────────────────────────────────────────────────────
 
 async def _stt_loop(call_id: str) -> None:
@@ -397,6 +471,12 @@ async def _stt_loop(call_id: str) -> None:
 
             full_transcript += " " + transcript
             session.transcript_history.append(transcript)
+
+            if session.state == CallState.SCAMBAITER_ACTIVE:
+                # Bypass fact-checking and queue the transcript directly for the scambaiter loop
+                # We do this immediately instead of waiting for claim_extractor to accumulate 50 chars
+                session.scambaiter_queue.put_nowait(transcript)
+                continue
 
             # Accumulate in claim extractor (debounced)
             claim_extractor.add_transcript(transcript)
@@ -506,6 +586,10 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
     stt_task = asyncio.create_task(_stt_loop(call_id))
     session.stt_task = stt_task
 
+    # ── SCAMBAITER: Dedicated audio loop ──────────────────────────────────────
+    scambaiter_task = asyncio.create_task(_scambaiter_loop(call_id))
+    session.scambaiter_task = scambaiter_task
+
     # ── ALWAYS: Video evidence capture loop — runs at 200ms cadence ───────────
     # Decoupled from STT so frames are committed to permanent record within
     # 200ms of a CRITICAL verdict, regardless of STT pipeline latency.
@@ -532,14 +616,28 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
         logger.info("HF ML loop ENABLED for call_id=%r", call_id)
 
     try:
-        async for message in websocket.iter_bytes():
-            # Ingest binary audio frame
-            n = ingestion.ingest_frame(message)
+        while True:
+            # Idle timeout: terminate connection if no audio received for 30 seconds
+            try:
+                message = await asyncio.wait_for(websocket.receive_bytes(), timeout=30.0)
+            except asyncio.TimeoutError:
+                logger.warning("WebSocket idle timeout: call_id=%r", call_id)
+                break
 
-            # Accumulate raw bytes for forensic hash
-            session.recorded_audio_bytes += message
+            # Payload validation: limit frame size to prevent memory abuse (e.g., max 64KB)
+            if len(message) > 65536:
+                logger.error("WebSocket abuse detected: frame size %d > 64KB, call_id=%r", len(message), call_id)
+                break
 
-            logger.debug("Audio frame: %d bytes → %d samples (call_id=%r)", len(message), n, call_id)
+            # Ingest binary audio frame safely
+            try:
+                n = ingestion.ingest_frame(message)
+                # Accumulate raw bytes for forensic hash
+                session.recorded_audio_bytes += message
+                logger.debug("Audio frame: %d bytes → %d samples (call_id=%r)", len(message), n, call_id)
+            except Exception as frame_exc:
+                logger.error("Malformed audio frame dropped (call_id=%r): %s", call_id, frame_exc)
+                continue
 
     except WebSocketDisconnect:
         logger.info("WebSocket disconnected: call_id=%r", call_id)

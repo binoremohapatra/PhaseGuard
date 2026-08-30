@@ -66,6 +66,21 @@ class CallStateObserver(private val context: Context) {
     /** True if the phone speaker is currently active. Polled every 1s during calls. */
     val isSpeakerOn: StateFlow<Boolean> = _isSpeakerOn.asStateFlow()
 
+    private val _incomingNumber = MutableStateFlow<String?>(null)
+    /**
+     * The phone number of the current incoming/active call, if available.
+     *
+     * ⚠️ On API 31+ this is always null — TelephonyCallback.CallStateListener does NOT
+     * provide the caller number without READ_CALL_LOG (a restricted permission we don't use).
+     * In that case we treat the caller as unknown (fail-open: protection prompt is always shown).
+     *
+     * On API 26–30 the legacy PhoneStateListener.onCallStateChanged() receives the number
+     * when the phone rings, and we capture it here.
+     *
+     * Set to null when the call ends (IDLE).
+     */
+    val incomingNumber: StateFlow<String?> = _incomingNumber.asStateFlow()
+
     // ─── Internals ────────────────────────────────────────────────────────────
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -138,29 +153,53 @@ class CallStateObserver(private val context: Context) {
 
     @Suppress("DEPRECATION", "MissingPermission")
     private fun registerLegacyListener() {
-        val listener = LegacyPhoneStateListener { state -> onCallStateChanged(state) }
+        val listener = LegacyPhoneStateListener { state, number -> onCallStateChanged(state, number) }
         legacyListener = listener
         telephonyManager.listen(listener, PhoneStateListener.LISTEN_CALL_STATE)
     }
 
     @Suppress("DEPRECATION")
     private inner class LegacyPhoneStateListener(
-        private val onState: (Int) -> Unit
+        private val onState: (Int, String?) -> Unit
     ) : PhoneStateListener() {
-        override fun onCallStateChanged(state: Int, phoneNumber: String?) = onState(state)
+        override fun onCallStateChanged(state: Int, phoneNumber: String?) = onState(state, phoneNumber)
     }
 
     // ─── Shared state update ──────────────────────────────────────────────────
 
-    private fun onCallStateChanged(state: Int) {
+    /**
+     * Called by both legacy and modern telephony listeners.
+     *
+     * @param state  Raw TelephonyManager call state constant.
+     * @param number Caller's phone number, available ONLY from the legacy API (<31) on RINGING.
+     *               Always null on API 31+ (modern callback doesn't provide it without restricted perms).
+     */
+    private fun onCallStateChanged(state: Int, number: String? = null) {
         val newState = when (state) {
             TelephonyManager.CALL_STATE_IDLE    -> VoxCallState.IDLE
             TelephonyManager.CALL_STATE_RINGING -> VoxCallState.RINGING
             TelephonyManager.CALL_STATE_OFFHOOK -> VoxCallState.OFFHOOK
             else -> VoxCallState.IDLE
         }
+        // Capture number on RINGING; clear on IDLE
+        when (newState) {
+            VoxCallState.RINGING -> {
+                if (!number.isNullOrBlank()) {
+                    _incomingNumber.value = number
+                    Log.d(TAG, "Incoming number captured (legacy API)")
+                } else {
+                    // Modern API (31+) or number unavailable — leave as null
+                    // ContactLookupHelper treats null as unknown (fail-open)
+                    Log.d(TAG, "Incoming number not available — will treat as unknown (fail-open)")
+                }
+            }
+            VoxCallState.IDLE -> {
+                _incomingNumber.value = null
+            }
+            else -> { /* OFFHOOK — keep existing number */ }
+        }
         if (_callState.value != newState) {
-            Log.d(TAG, "Call state: ${_callState.value} → $newState")
+            Log.d(TAG, "Call state: ${_callState.value} -> $newState")
             _callState.value = newState
         }
     }

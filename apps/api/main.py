@@ -91,7 +91,7 @@ app.add_middleware(SlowAPIMiddleware)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
     return JSONResponse(
         status_code=429,
-        content={"detail": "Rate limit exceeded", "retry_after": str(exc.retry_after)},
+        content={"detail": "Rate limit exceeded: " + str(exc)},
     )
 
 # CORS — temporarily allow all origins until deployed frontend URL is known
@@ -211,6 +211,10 @@ async def activate_scambait(
     else:
         raise HTTPException(status_code=401, detail="Missing token")
 
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
+
     manager.activate_scambaiter(call_id)
     logger.info("Scambaiter activated via REST: call_id=%r", call_id)
     return {"status": "scambaiter_active", "call_id": call_id, "ts": datetime.now(timezone.utc).isoformat()}
@@ -233,8 +237,29 @@ async def upload_video_frame(
     else:
         raise HTTPException(status_code=401, detail="Missing token")
 
-    session = manager.require_session(call_id)
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
+
+    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
+        raise HTTPException(status_code=400, detail="Invalid content type. Expected JPEG, PNG, or WEBP.")
+    if file.size and file.size > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Payload too large. Maximum size is 5MB.")
+
     image_bytes = await file.read()
+    if len(image_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Payload too large. Maximum size is 5MB.")
+
+    import cv2
+    import numpy as np
+    try:
+        nparr = np.frombuffer(image_bytes, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("cv2.imdecode returned None")
+    except Exception as e:
+        logger.error("Failed to decode uploaded image: %s", e)
+        raise HTTPException(status_code=400, detail="Invalid image content or corruption detected.")
 
     from workers.executor import get_executor
     from forensics.video_evidence import process_frame_bytes
@@ -283,7 +308,9 @@ async def get_dossier(
     else:
         raise HTTPException(status_code=401, detail="Missing token")
 
-    session = manager.require_session(call_id)
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
 
     # Compute hash
     from forensics.hashing import compute_audio_hash
@@ -407,7 +434,9 @@ async def draft_escalation(
     else:
         raise HTTPException(status_code=401, detail="Missing token")
 
-    session = manager.require_session(call_id)
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
 
     if not session.factcheck_history:
         raise HTTPException(status_code=400, detail="No fact-check results yet — call in progress")
@@ -507,7 +536,9 @@ async def confirm_escalation(
     else:
         raise HTTPException(status_code=401, detail="Missing token")
 
-    session = manager.require_session(call_id)
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
 
     drafts = getattr(app.state, "escalation_drafts", {})
     payload = drafts.get(body.draft_id)

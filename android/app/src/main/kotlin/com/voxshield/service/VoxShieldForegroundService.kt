@@ -20,6 +20,7 @@ import com.voxshield.VoxShieldApplication.Companion.CHANNEL_ALERTS
 import com.voxshield.VoxShieldApplication.Companion.CHANNEL_PROTECTION
 import com.voxshield.audio.AudioCaptureManager
 import com.voxshield.call.CallStateObserver
+import com.voxshield.call.ContactLookupHelper
 import com.voxshield.call.VoxCallState
 import com.voxshield.model.BackendMessage
 import com.voxshield.model.PdiVerdict
@@ -276,6 +277,11 @@ class VoxShieldForegroundService : Service() {
 
     /** Observes call state and speakerphone to update the protection state. */
     private fun listenToCallState() {
+        // Load the "prompt for unknown only" preference (default true)
+        val promptOnUnknownOnly = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getBoolean(PREF_PROMPT_UNKNOWN_ONLY, true)
+        _protectionState.value = _protectionState.value.copy(promptOnUnknownOnly = promptOnUnknownOnly)
+
         callStateListenerJob?.cancel()
         callStateListenerJob = serviceScope.launch {
             launch {
@@ -289,8 +295,24 @@ class VoxShieldForegroundService : Service() {
                     updateNotification()
                 }
             }
+            // Contact lookup: when ringing, check if caller is a known contact
+            launch {
+                callObserver.incomingNumber.collect { number ->
+                    val isKnown = ContactLookupHelper.isKnownContact(this@VoxShieldForegroundService, number)
+                    _protectionState.value = _protectionState.value.copy(isKnownContact = isKnown)
+                    Log.d(TAG, "Contact lookup result for ${number ?: "<null>"}: isKnown=$isKnown")
+                }
+            }
         }
     }
+
+    /** Persist the "prompt for unknown callers only" user preference. */
+    fun setPromptOnUnknownOnly(enabled: Boolean) {
+        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .edit().putBoolean(PREF_PROMPT_UNKNOWN_ONLY, enabled).apply()
+        _protectionState.value = _protectionState.value.copy(promptOnUnknownOnly = enabled)
+    }
+
 
     // ─── Alert Management ─────────────────────────────────────────────────────
 
@@ -440,6 +462,7 @@ class VoxShieldForegroundService : Service() {
         const val PREF_PROTECTION_ENABLED = "protection_enabled"
         const val PREF_BACKEND_URL = "backend_ws_url"
         const val PREF_ONBOARDING_DONE = "onboarding_complete"
+        const val PREF_PROMPT_UNKNOWN_ONLY = "prompt_unknown_only"  // default true
     }
 }
 
@@ -456,5 +479,13 @@ data class ProtectionState(
     val latestTranscript: String = "",
     val factcheckStatus: String = "SAFE",
     val latestVerdictMessage: String = "",
-    val isLimitedMode: Boolean = false
+    val isLimitedMode: Boolean = false,
+    /** True if the current caller's number is found in the user's saved contacts. */
+    val isKnownContact: Boolean = false,
+    /**
+     * User setting: only show the prominent 'Start Protection' prompt for unknown callers.
+     * Default true. When false, prompt shows for every incoming call.
+     * Loaded from SharedPreferences; can be toggled in the Settings sheet.
+     */
+    val promptOnUnknownOnly: Boolean = true,
 )

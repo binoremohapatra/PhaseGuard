@@ -55,6 +55,8 @@ class CallSession:
     tremor_task: Optional[asyncio.Task] = None
     stt_task: Optional[asyncio.Task] = None
     evidence_task: Optional[asyncio.Task] = None   # video evidence capture loop
+    scambaiter_task: Optional[asyncio.Task] = None # dedicated scambaiter audio loop
+    scambaiter_queue: asyncio.Queue = field(default_factory=asyncio.Queue) # queue for caller transcripts
 
     # Latest DSP results (for dossier)
     latest_pdi: float = 0.0
@@ -143,8 +145,8 @@ class ConnectionManager:
 
         session.state = CallState.ENDED
 
-        for task_attr in ("bispectrum_task", "tremor_task", "stt_task", "evidence_task"):
-            task: Optional[asyncio.Task] = getattr(session, task_attr)
+        for task_attr in ("bispectrum_task", "tremor_task", "stt_task", "evidence_task", "scambaiter_task"):
+            task: Optional[asyncio.Task] = getattr(session, task_attr, None)
             if task and not task.done():
                 task.cancel()
                 try:

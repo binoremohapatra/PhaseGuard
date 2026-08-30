@@ -59,7 +59,8 @@ fun HomeScreen(
     amplitude: Float,
     backendUrl: String,
     onBackendUrlChange: (String) -> Unit,
-    onDismissAlert: () -> Unit
+    onDismissAlert: () -> Unit,
+    onSetPromptUnknownOnly: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showSettings by remember { mutableStateOf(false) }
@@ -182,6 +183,21 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // ── Unknown caller prompt banner ───────────────────────────────────
+            // Show prominently when: call is ringing/active AND protection is off
+            // AND caller is unknown (or promptOnUnknownOnly is false = show always)
+            val callIsActive = protectionState.callState in listOf(VoxCallState.RINGING, VoxCallState.OFFHOOK)
+            val showUnknownPrompt = !isActive &&
+                callIsActive &&
+                (!protectionState.promptOnUnknownOnly || !protectionState.isKnownContact)
+
+            UnknownCallerBanner(
+                visible = showUnknownPrompt,
+                isKnownContact = protectionState.isKnownContact,
+                onStartProtection = { toggleProtection(context, isActive = false, backendUrl = backendUrl) },
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp)
+            )
+
             // ── Call state banners ────────────────────────────────────────────
 
             ScamAlertBanner(
@@ -251,12 +267,96 @@ fun HomeScreen(
         if (showSettings) {
             SettingsBottomSheet(
                 currentUrl = editableUrl,
+                promptOnUnknownOnly = protectionState.promptOnUnknownOnly,
                 onUrlChange = { editableUrl = it },
                 onSave = {
                     onBackendUrlChange(editableUrl)
                     showSettings = false
                 },
-                onDismiss = { showSettings = false }
+                onDismiss = { showSettings = false },
+                onSetPromptUnknownOnly = onSetPromptUnknownOnly
+            )
+        }
+    }
+}
+
+// ─── UnknownCallerBanner ────────────────────────────────────────────────────
+
+/**
+ * Prominent amber banner shown when an unknown caller is on the line and protection is off.
+ *
+ * Show conditions:
+ *   - Call is active (RINGING or OFFHOOK)
+ *   - Protection is NOT already running
+ *   - Caller is NOT a known contact (or 'prompt for unknown only' is disabled)
+ *
+ * @param visible           Whether to show this banner.
+ * @param isKnownContact    True if the caller was identified in contacts. Used for subtitle text.
+ * @param onStartProtection Called when the user taps "Start Protection".
+ */
+@Composable
+fun UnknownCallerBanner(
+    visible: Boolean,
+    isKnownContact: Boolean,
+    onStartProtection: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (!visible) return
+
+    val warningColor = Color(0xFFFF8C00)  // Amber — distinct from the red CRITICAL banner
+
+    // Gentle pulsing border to draw attention
+    val infiniteTransition = rememberInfiniteTransition(label = "unknown_pulse")
+    val borderAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "border_alpha"
+    )
+
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(warningColor.copy(alpha = 0.10f))
+            .border(1.5.dp, warningColor.copy(alpha = borderAlpha), RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("⚠️", fontSize = 20.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (isKnownContact) "Incoming call" else "Unknown number calling",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = warningColor
+                )
+                Text(
+                    text = if (isKnownContact)
+                        "Tap to start protection manually"
+                    else
+                        "Not in your contacts \u2014 potential scam risk",
+                    fontSize = 11.sp,
+                    color = warningColor.copy(alpha = 0.8f),
+                    lineHeight = 16.sp
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
+        Button(
+            onClick = onStartProtection,
+            modifier = Modifier.fillMaxWidth().height(40.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = warningColor)
+        ) {
+            Text(
+                text = "🛡️  Start Protection",
+                color = Color.Black,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold
             )
         }
     }
@@ -346,9 +446,11 @@ private fun InfoCard() {
 @Composable
 private fun SettingsBottomSheet(
     currentUrl: String,
+    promptOnUnknownOnly: Boolean,
     onUrlChange: (String) -> Unit,
     onSave: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onSetPromptUnknownOnly: (Boolean) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -380,6 +482,35 @@ private fun SettingsBottomSheet(
                     unfocusedTextColor = VoxColors.TextSecondary
                 )
             )
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Unknown-caller prompting toggle ────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Only prompt for unknown callers",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = VoxColors.TextPrimary
+                    )
+                    Text(
+                        text = "Show Start Protection only when the caller isn't in your contacts",
+                        fontSize = 11.sp,
+                        color = VoxColors.TextMuted,
+                        lineHeight = 16.sp
+                    )
+                }
+                Switch(
+                    checked = promptOnUnknownOnly,
+                    onCheckedChange = onSetPromptUnknownOnly,
+                    colors = SwitchDefaults.colors(checkedThumbColor = VoxColors.Accent)
+                )
+            }
+
             Spacer(modifier = Modifier.height(20.dp))
             Button(
                 onClick = onSave,

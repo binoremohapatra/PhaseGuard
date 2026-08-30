@@ -19,6 +19,10 @@ from factcheck.claim_extraction import ClaimExtractor
 from factcheck.verdict import generate_verdict
 from factcheck.search import SearchVerifier
 from intel.number_reputation import report_number
+from security.rate_limit import LIMIT_API, limiter
+import hmac
+import hashlib
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -42,11 +46,33 @@ def check_link_safety(text: str) -> Tuple[bool, str]:
 
 
 @router.post("/webhook")
+@limiter.limit(LIMIT_API)
 async def whatsapp_webhook(request: Request) -> Dict[str, Any]:
     """
     Webhook for WhatsApp Business API.
     Expects incoming message events.
     """
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        logger.warning("WhatsApp webhook missing X-Hub-Signature-256 header")
+        raise HTTPException(status_code=403, detail="Invalid signature")
+
+    body_bytes = await request.body()
+    
+    # HMAC verification against APP_SECRET
+    app_secret = os.getenv("WHATSAPP_APP_SECRET", "")
+    if app_secret:
+        expected_signature = hmac.new(
+            key=app_secret.encode('utf-8'),
+            msg=body_bytes,
+            digestmod=hashlib.sha256
+        ).hexdigest()
+        
+        # X-Hub-Signature-256 comes as 'sha256=...'
+        if not signature.startswith("sha256=") or not hmac.compare_digest(signature[7:], expected_signature):
+            logger.warning("WhatsApp webhook HMAC validation failed")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+
     body = await request.json()
 
     # Parse WhatsApp API payload (simplified for demonstration)
