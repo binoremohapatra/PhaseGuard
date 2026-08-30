@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # A public model for spoofing/deepfake detection on HF
 # Note: You can replace this with any specific ASVspoof model URL
-HF_API_URL = "https://api-inference.huggingface.co/models/ehcalabres/wav2vec2-lg-xlsr-en-speech-emotion-recognition"
+HF_API_URL = "https://api-inference.huggingface.co/models/aalimamac/hubert-base-ls960-asvspoof"
 
 async def analyze_audio_hf(window: np.ndarray, fs: int = 16_000) -> dict:
     """
@@ -55,11 +55,10 @@ async def analyze_audio_hf(window: np.ndarray, fs: int = 16_000) -> dict:
             # Format expected from HF Audio Classification
             # e.g., [{"label": "fake", "score": 0.98}, {"label": "real", "score": 0.02}]
             if isinstance(data, list) and len(data) > 0 and isinstance(data[0], dict):
-                # Just mock deepfake mapping if it's an emotion model for demo,
-                # ideally use a real ASVspoof model.
-                top_label = data[0].get("label", "unknown")
+                # Map ASVspoof labels (e.g. "spoof", "fake") to boolean
+                top_label = data[0].get("label", "unknown").lower()
                 score = data[0].get("score", 0.0)
-                is_synthetic = score > 0.5 if "fake" in top_label.lower() else False
+                is_synthetic = score > 0.5 if ("fake" in top_label or "spoof" in top_label) else False
                 
                 return {
                     "status": "success",
