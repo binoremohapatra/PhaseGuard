@@ -60,18 +60,21 @@ async def whatsapp_webhook(request: Request) -> Dict[str, Any]:
     body_bytes = await request.body()
     
     # HMAC verification against APP_SECRET
-    app_secret = os.getenv("WHATSAPP_APP_SECRET", "")
-    if app_secret:
-        expected_signature = hmac.new(
-            key=app_secret.encode('utf-8'),
-            msg=body_bytes,
-            digestmod=hashlib.sha256
-        ).hexdigest()
-        
-        # X-Hub-Signature-256 comes as 'sha256=...'
-        if not signature.startswith("sha256=") or not hmac.compare_digest(signature[7:], expected_signature):
-            logger.warning("WhatsApp webhook HMAC validation failed")
-            raise HTTPException(status_code=403, detail="Invalid signature")
+    app_secret = os.getenv("WHATSAPP_APP_SECRET")
+    if not app_secret:
+        logger.error("WHATSAPP_APP_SECRET not configured in environment")
+        raise HTTPException(status_code=500, detail="Server misconfiguration")
+
+    expected_signature = hmac.new(
+        key=app_secret.encode('utf-8'),
+        msg=body_bytes,
+        digestmod=hashlib.sha256
+    ).hexdigest()
+    
+    # X-Hub-Signature-256 comes as 'sha256=...'
+    if not signature.startswith("sha256=") or not hmac.compare_digest(signature[7:], expected_signature):
+        logger.warning("WhatsApp webhook HMAC validation failed")
+        raise HTTPException(status_code=403, detail="Invalid signature")
 
     body = await request.json()
 
@@ -161,8 +164,14 @@ async def whatsapp_verify(request: Request) -> Any:
     hub_challenge = params.get("hub.challenge")
     hub_verify    = params.get("hub.verify_token")
 
+    verify_token = os.getenv("WHATSAPP_VERIFY_TOKEN")
+    
+    if not verify_token:
+        logger.error("WHATSAPP_VERIFY_TOKEN not configured in environment")
+        raise HTTPException(status_code=500, detail="Server misconfiguration")
+
     # In production, validate hub_verify against a stored verify token
-    if hub_mode == "subscribe" and hub_challenge:
+    if hub_mode == "subscribe" and hub_challenge and hub_verify == verify_token:
         logger.info("WhatsApp webhook verified successfully")
         from fastapi.responses import PlainTextResponse
         return PlainTextResponse(hub_challenge)

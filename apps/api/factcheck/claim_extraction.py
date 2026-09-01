@@ -729,7 +729,7 @@ class ClaimExtractor:
         self._pending_transcript = ""
         return text
 
-    async def extract(self, transcript_window: str, call_id: str = "") -> Optional[ExtractedClaim]:
+    async def extract(self, transcript_window: str, full_transcript: str = "", call_id: str = "") -> Optional[ExtractedClaim]:
         """
         Run claim extraction on a transcript window.
 
@@ -737,6 +737,8 @@ class ClaimExtractor:
         ----------
         transcript_window : str
             Raw transcript text (will be injection-guarded internally).
+        full_transcript : str
+            The accumulated full transcript for regex checks across window boundaries.
         call_id : str
             For logging.
 
@@ -753,7 +755,7 @@ class ClaimExtractor:
             return None
 
         # Step 1: Deterministic instant-CRITICAL check — runs before LLM, cannot be overridden
-        hardcoded_critical, hardcoded_category = _check_instant_critical(transcript_window)
+        hardcoded_critical, hardcoded_category = _check_instant_critical(full_transcript if full_transcript else transcript_window)
 
         # Step 2: Extract identifiers deterministically (regex, not LLM)
         upi_ids = _extract_upi_ids(transcript_window)

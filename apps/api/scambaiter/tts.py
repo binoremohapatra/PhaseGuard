@@ -85,17 +85,9 @@ async def _gtts_synthesize(text: str) -> Optional[bytes]:
         from workers.executor import run_in_dsp_executor
         mp3_bytes = await run_in_dsp_executor(_sync_gtts)
 
-        # Convert MP3 → PCM16LE via pydub (if available) or return raw
-        try:
-            from pydub import AudioSegment  # type: ignore[import]
-
-            segment = AudioSegment.from_mp3(_io.BytesIO(mp3_bytes))
-            segment = segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-            return segment.raw_data
-        except ImportError:
-            # pydub not installed — return MP3 bytes with a warning
-            logger.warning("pydub not installed — returning MP3 bytes from gTTS, not PCM16LE")
-            return mp3_bytes
+        # Just return MP3 directly. The browser's AudioContext.decodeAudioData
+        # handles MP3 perfectly, and avoids any ffmpeg WAV header issues.
+        return mp3_bytes
 
     except Exception as exc:
         logger.error("gTTS synthesis failed: %s", exc)
@@ -137,7 +129,9 @@ async def _elevenlabs_synthesize(text: str) -> Optional[bytes]:
 
                 segment = AudioSegment.from_mp3(_io.BytesIO(audio_bytes))
                 segment = segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-                return segment.raw_data
+                out_buf = _io.BytesIO()
+                segment.export(out_buf, format="wav")
+                return out_buf.getvalue()
             except ImportError:
                 return audio_bytes
 

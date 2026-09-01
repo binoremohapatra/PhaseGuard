@@ -415,7 +415,7 @@ async def _stt_loop(call_id: str) -> None:
 
     buf = session.buffer
     stt_acc = STTAccumulator(fs=cfg.sample_rate)
-    claim_extractor = ClaimExtractor(debounce_chars=50)
+    claim_extractor = ClaimExtractor(debounce_chars=200)
     search_verifier = SearchVerifier()
 
     # Read chunk size: 0.5s at a time for the accumulator
@@ -487,7 +487,7 @@ async def _stt_loop(call_id: str) -> None:
             transcript_window = claim_extractor.get_and_reset()
 
             # Claim extraction + search + verdict (1.5–4s pipeline)
-            claim = await claim_extractor.extract(transcript_window, call_id=call_id)
+            claim = await claim_extractor.extract(transcript_window, full_transcript=full_transcript, call_id=call_id)
             search_result = None
             if claim:
                 search_result = await search_verifier.verify_claim(claim, call_id=call_id)

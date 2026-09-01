@@ -17,6 +17,7 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
   const [tremorEnergy, setTremorEnergy] = useState(0);
   const [alertState, setAlertState] = useState<AlertStatus>('idle');
   const [alertMessage, setAlertMessage] = useState<string>('');
+  const [hasReachedCritical, setHasReachedCritical] = useState(false);
   const [isMicActive, setIsMicActive] = useState(false);
   const [authToken, setAuthToken] = useState<string>('');
   const [scambaiterActive, setScambaiterActive] = useState(false);
@@ -42,13 +43,15 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
     }
 
     try {
-      // Use decodeAudioData which safely handles MP3 bytes from gTTS as well as PCM/WAV
-      // This is crucial because if pydub isn't installed on the backend, it sends raw MP3.
-      const audioBuffer = await audioCtx.decodeAudioData(buffer.slice(0));
-      const source = audioCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(audioCtx.destination);
-      source.start();
+      // Create a Blob from the binary audio data (MP3)
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      
+      // Clean up object URL after playing
+      audio.onended = () => URL.revokeObjectURL(url);
+      
+      audio.play().catch(e => console.error("Audio playback failed:", e));
     } catch (err) {
       console.error("Failed to decode scambaiter audio data:", err);
     }
@@ -91,6 +94,9 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
             // AlertBanner matches lowercase. Normalize here.
             const rawStatus = (msg as any).status || (msg as any).label || 'idle';
             setAlertState((rawStatus as string).toLowerCase() as AlertStatus);
+            if ((rawStatus as string).toLowerCase() === 'critical') {
+              setHasReachedCritical(true);
+            }
             if ((msg as any).message) {
               setAlertMessage((msg as any).message);
             }
@@ -324,7 +330,7 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
         <AlertBanner status={alertState} message={alertMessage} />
 
         {/* Action buttons — shown when CRITICAL verdict reached */}
-        {alertState === 'critical' && (
+        {(alertState === 'critical' || hasReachedCritical) && (
           <div className="flex gap-4 flex-wrap">
             {!scambaiterActive ? (
               <button

@@ -114,6 +114,7 @@ class ConnectionManager:
         session.buffer.register_cursor("bispectrum")
         session.buffer.register_cursor("tremor")
         session.buffer.register_cursor("stt")
+        session.buffer.register_cursor("hf_ml")
 
         self._sessions[call_id] = session
         logger.info("Session created: call_id=%r mode=%r", call_id, ingestion_mode)

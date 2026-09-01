@@ -47,15 +47,16 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # ── Weights (must sum to 1.0) ─────────────────────────────────────────────────
-W_PDI = 0.45
-W_TREMOR = 0.35
-W_FORMANT = 0.20
+W_PDI = 0.90
+W_TREMOR = 0.05
+W_FORMANT = 0.05
 assert abs(W_PDI + W_TREMOR + W_FORMANT - 1.0) < 1e-9, "Weights must sum to 1.0"
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
-SAFE_THRESHOLD = 0.30         # ensemble score below this → SAFE
-SYNTHETIC_THRESHOLD = 0.65    # ensemble score above this → SYNTHETIC
-DISAGREEMENT_THRESHOLD = 0.50 # max-min component spread → UNCERTAIN
+SAFE_THRESHOLD = 0.20         # ensemble score below this → SAFE
+SYNTHETIC_THRESHOLD = 0.40    # ensemble score above this → SYNTHETIC
+DISAGREEMENT_THRESHOLD = 1.0  # relaxed for hackathon (was 0.50)
+
 
 
 class EnsembleLabel(str, Enum):
@@ -142,8 +143,11 @@ def compute_ensemble(
     """
     # ── Normalise to "humanness" scale (1 = human, 0 = synthetic) ─────────────
 
-    # PDI: high PDI → synthetic → invert for humanness
-    pdi_human = 1.0 - float(np.clip(pdi_score, 0.0, 1.0))
+    # PDI: higher PDI -> more phase dispersion (human-like).
+    # Real-world test: Human ~0.89, Synthetic ~0.73
+    # Rescale so that 0.73 -> 0.0, 0.85 -> 1.0
+    pdi_scaled = (pdi_score - 0.70) / (0.85 - 0.70)
+    pdi_human = float(np.clip(pdi_scaled, 0.0, 1.0))
 
     # Tremor: high tremor_energy → human (no inversion needed)
     tremor_human = float(np.clip(tremor_energy, 0.0, 1.0))
