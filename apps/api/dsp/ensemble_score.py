@@ -47,15 +47,15 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 # ── Weights (must sum to 1.0) ─────────────────────────────────────────────────
-W_PDI = 0.90
-W_TREMOR = 0.05
-W_FORMANT = 0.05
+W_PDI = 0.70
+W_TREMOR = 0.15
+W_FORMANT = 0.15
 assert abs(W_PDI + W_TREMOR + W_FORMANT - 1.0) < 1e-9, "Weights must sum to 1.0"
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 SAFE_THRESHOLD = 0.20         # ensemble score below this → SAFE
 SYNTHETIC_THRESHOLD = 0.40    # ensemble score above this → SYNTHETIC
-DISAGREEMENT_THRESHOLD = 1.0  # relaxed for hackathon (was 0.50)
+DISAGREEMENT_THRESHOLD = 0.50  # restored security threshold
 
 
 
@@ -84,17 +84,36 @@ def compute_formant_stability(audio_window: np.ndarray, fs: int = 16_000) -> flo
       0.0 → highly variable or suspiciously static centroid (synthetic-like)
 
     Uses 20ms sub-frames within the window to track centroid over time.
+    Only analyzes high-energy frames (vowels) to avoid noise/consonant variance.
     """
     frame_size = int(0.020 * fs)  # 20ms sub-frames
     if len(audio_window) < frame_size * 2:
         return 0.5  # insufficient data → neutral
 
-    centroids = []
+    # Pre-calculate energy for all frames to find vowels
+    frames = []
+    energies = []
     for start in range(0, len(audio_window) - frame_size, frame_size):
         frame = audio_window[start : start + frame_size].astype(np.float64)
-        frame *= np.hanning(len(frame))
-        spectrum = np.abs(np.fft.rfft(frame))
-        freqs = np.fft.rfftfreq(len(frame), d=1.0 / fs)
+        frames.append(frame)
+        energies.append(np.mean(frame ** 2))
+
+    if not energies:
+        return 0.5
+
+    # Select top 25% highest energy frames (vowels)
+    energy_threshold = np.percentile(energies, 75)
+    if energy_threshold < 1e-10:
+        return 0.5
+
+    centroids = []
+    for frame, energy in zip(frames, energies):
+        if energy < energy_threshold:
+            continue
+            
+        frame_windowed = frame * np.hanning(len(frame))
+        spectrum = np.abs(np.fft.rfft(frame_windowed))
+        freqs = np.fft.rfftfreq(len(frame_windowed), d=1.0 / fs)
         total = spectrum.sum()
         if total > 1e-10:
             centroid = float(np.dot(freqs, spectrum) / total)
@@ -109,6 +128,7 @@ def compute_formant_stability(audio_window: np.ndarray, fs: int = 16_000) -> flo
     # Human speech centroid varies moderately (cv ~ 0.1–0.4).
     # Synthesised speech: either too flat (cv ~0) or too noisy (cv >>0.5).
     # Score: peak at cv=0.25, falls off toward 0 at extremes.
+    # We use a tighter bell curve (0.15) because multi-chunk history handles noise naturally.
     ideal_cv = 0.25
     score = float(np.exp(-((cv - ideal_cv) ** 2) / (2 * 0.15 ** 2)))
     return float(np.clip(score, 0.0, 1.0))
@@ -119,6 +139,7 @@ def compute_ensemble(
     tremor_energy: float,
     audio_window: np.ndarray | None = None,
     fs: int = 16_000,
+    state_dict: dict | None = None,
 ) -> EnsembleResult:
     """
     Compute the anti-spoofing ensemble score from all available signals.
@@ -141,20 +162,28 @@ def compute_ensemble(
     -------
     EnsembleResult dict
     """
-    # ── Normalise to "humanness" scale (1 = human, 0 = synthetic) ─────────────
-
+    # ── 1. Component Scaling ──────────────────────────────────────────────────
     # PDI: higher PDI -> more phase dispersion (human-like).
-    # Real-world test: Human ~0.89, Synthetic ~0.73
-    # Rescale so that 0.73 -> 0.0, 0.85 -> 1.0
-    pdi_scaled = (pdi_score - 0.70) / (0.85 - 0.70)
-    pdi_human = float(np.clip(pdi_scaled, 0.0, 1.0))
+    # Sigmoid mapping: strictly tuned to x0=0.75 via ROC to block Premium AI evasion
+    pdi_human = float(1.0 / (1.0 + np.exp(-15.0 * (pdi_score - 0.75))))
 
-    # Tremor: high tremor_energy → human (no inversion needed)
-    tremor_human = float(np.clip(tremor_energy, 0.0, 1.0))
+    # Tremor: higher tremor energy -> physiological tremor (human-like).
+    # Sigmoid mapping: smooth transition avoiding hard clip
+    tremor_human = float(1.0 / (1.0 + np.exp(-30.0 * (tremor_energy - 0.10))))
 
     # Formant stability: high score → human
     if audio_window is not None:
-        formant_human = compute_formant_stability(audio_window, fs=fs)
+        curr_formant = compute_formant_stability(audio_window, fs=fs)
+        if state_dict is not None:
+            history = state_dict.setdefault("formant_history", [])
+            # Only track valid vowel chunks in memory
+            if curr_formant != 0.5:
+                history.append(curr_formant)
+            if len(history) > 3:
+                history.pop(0)
+            formant_human = float(sum(history) / len(history)) if history else 0.5
+        else:
+            formant_human = curr_formant
     else:
         formant_human = 0.5  # neutral when no audio window provided
 

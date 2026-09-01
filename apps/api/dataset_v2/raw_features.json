@@ -1,0 +1,1786 @@
+[
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7331419543484702,
+    "tremor_raw": 0.12762278280621175,
+    "formant_raw": 0.7612395782331335
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7700161312108322,
+    "tremor_raw": 0.11291299217244988,
+    "formant_raw": 0.9295115287002751
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.771097020644304,
+    "tremor_raw": 0.08636814559019991,
+    "formant_raw": 0.9045197422629847
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7921714715955531,
+    "tremor_raw": 0.10477982961072373,
+    "formant_raw": 0.9998340628674378
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7970760924876498,
+    "tremor_raw": 0.07328617569759284,
+    "formant_raw": 0.7806535101968932
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.8026588201959745,
+    "tremor_raw": 0.04480490315124263,
+    "formant_raw": 0.9898167122378252
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.7856114100233418,
+    "tremor_raw": 0.0693364695887836,
+    "formant_raw": 0.9966887139493946
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.7903228520714344,
+    "tremor_raw": 0.16220973361024868,
+    "formant_raw": 0.9575076852859942
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7651032593006538,
+    "tremor_raw": 0.20964703069076157,
+    "formant_raw": 0.9422026080493331
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.7664183191033962,
+    "tremor_raw": 0.20717269967719043,
+    "formant_raw": 0.29956991151716944
+  },
+  {
+    "file": "ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7801593673425589,
+    "tremor_raw": 0.08591911091892442,
+    "formant_raw": 0.17428861595171494
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.8522039862056405,
+    "tremor_raw": 0.02025024264073746,
+    "formant_raw": 0.8842318901866352
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.8428736310395812,
+    "tremor_raw": 0.012011273337371313,
+    "formant_raw": 0.915374765305112
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.9040551006335378,
+    "tremor_raw": 0.015522024989648678,
+    "formant_raw": 0.9567583144234268
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.9180551991292355,
+    "tremor_raw": 0.029817589928301327,
+    "formant_raw": 0.5900023905656898
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.9467763352157369,
+    "tremor_raw": 0.15861851747912914,
+    "formant_raw": 0.5134093381659207
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.9133871923531305,
+    "tremor_raw": 0.20178707319652492,
+    "formant_raw": 0.06446130364855333
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.8621471627751613,
+    "tremor_raw": 0.14091436452746484,
+    "formant_raw": 0.8911832198300272
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.7907841343901715,
+    "tremor_raw": 0.06672306852020417,
+    "formant_raw": 0.9807913689542309
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.8135237294651014,
+    "tremor_raw": 0.08919067727665853,
+    "formant_raw": 0.78187756492277
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.8614172194312263,
+    "tremor_raw": 0.05318977241977449,
+    "formant_raw": 0.7393853075266351
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.945835526966304,
+    "tremor_raw": 0.04099589910673771,
+    "formant_raw": 0.19159391903082487
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.9172499856423503,
+    "tremor_raw": 0.055002315481846635,
+    "formant_raw": 0.34935238218061526
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.8943007926423266,
+    "tremor_raw": 0.1276550903448551,
+    "formant_raw": 0.9561794243040621
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.8978855630580245,
+    "tremor_raw": 0.058798953691547896,
+    "formant_raw": 0.9561794243040621
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.9340260963251878,
+    "tremor_raw": 0.033343349453360205,
+    "formant_raw": 5.112207550813727e-09
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.9557818106642741,
+    "tremor_raw": 0.10744832087416052,
+    "formant_raw": 0.9400955622194122
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.9531592665925726,
+    "tremor_raw": 0.1817127575608241,
+    "formant_raw": 0.7911903753121066
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.9320791184549134,
+    "tremor_raw": 0.19659819718269364,
+    "formant_raw": 5.869479574799505e-08
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.899421394893291,
+    "tremor_raw": 0.15426432996667797,
+    "formant_raw": 9.09303069464337e-05
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.8748349790425954,
+    "tremor_raw": 0.13347289063784196,
+    "formant_raw": 0.6496662252282617
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.8923584913727368,
+    "tremor_raw": 0.11985622734655015,
+    "formant_raw": 0.43711690209623305
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.894014974849056,
+    "tremor_raw": 0.10039590305203513,
+    "formant_raw": 9.72309893810051e-06
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 22,
+    "start_s": 11.0,
+    "pdi_raw": 0.8962872411174317,
+    "tremor_raw": 0.0786332195913638,
+    "formant_raw": 2.2076469428596114e-12
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 23,
+    "start_s": 11.5,
+    "pdi_raw": 0.8436278108256058,
+    "tremor_raw": 0.04939296104775194,
+    "formant_raw": 0.9988893713603794
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 24,
+    "start_s": 12.0,
+    "pdi_raw": 0.8446515423746391,
+    "tremor_raw": 0.04280854931820351,
+    "formant_raw": 0.9999226814636856
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 25,
+    "start_s": 12.5,
+    "pdi_raw": 0.8760967900700632,
+    "tremor_raw": 0.050178819749127336,
+    "formant_raw": 0.008768683218552651
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 26,
+    "start_s": 13.0,
+    "pdi_raw": 0.9500220993971769,
+    "tremor_raw": 0.017373021046989307,
+    "formant_raw": 0.5173799119266761
+  },
+  {
+    "file": "freesound_community-shortfilm-voice-56795.mp3",
+    "chunk_idx": 27,
+    "start_s": 13.5,
+    "pdi_raw": 0.9432700162819387,
+    "tremor_raw": 0.2951795809875811,
+    "formant_raw": 0.09186135862875103
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7583850306969195,
+    "tremor_raw": 0.053953219776463404,
+    "formant_raw": 0.5624633947223376
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7738558518995965,
+    "tremor_raw": 0.024491119028819938,
+    "formant_raw": 0.9401403520865014
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7643037350144353,
+    "tremor_raw": 0.08954845109310437,
+    "formant_raw": 0.9773312832392191
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7519867975038911,
+    "tremor_raw": 0.1382854154799573,
+    "formant_raw": 0.7730684285271786
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7808283858170815,
+    "tremor_raw": 0.1155158187338472,
+    "formant_raw": 0.7516088299177792
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.8443419972259103,
+    "tremor_raw": 0.1077918842812272,
+    "formant_raw": 0.9962578404391363
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.8021004675651745,
+    "tremor_raw": 0.05270968869696645,
+    "formant_raw": 0.1772690889406982
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.770748391506827,
+    "tremor_raw": 0.10490159188019971,
+    "formant_raw": 0.11966392002507109
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7190903952501561,
+    "tremor_raw": 0.0477733786711419,
+    "formant_raw": 0.9287962874383519
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.7319338229712163,
+    "tremor_raw": 0.06686811057924079,
+    "formant_raw": 0.8705977945159842
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7707083921307953,
+    "tremor_raw": 0.0448496571999463,
+    "formant_raw": 0.9688017625813854
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.7488491663277992,
+    "tremor_raw": 0.1631063852657381,
+    "formant_raw": 0.9794228894877266
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.79354546939879,
+    "tremor_raw": 0.17716398315518395,
+    "formant_raw": 0.8234199688344362
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.7499276085785371,
+    "tremor_raw": 0.08122589810240144,
+    "formant_raw": 0.9997835168074402
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.7849624371088291,
+    "tremor_raw": 0.1522225724301699,
+    "formant_raw": 0.6054992213717474
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.7909071866164258,
+    "tremor_raw": 0.05127994230131545,
+    "formant_raw": 0.00030887433370695394
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.8491928242672857,
+    "tremor_raw": 0.055348858255303446,
+    "formant_raw": 0.6291446652344205
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.8019283211806416,
+    "tremor_raw": 0.07711151607870839,
+    "formant_raw": 0.9177904860553556
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.7633871080599334,
+    "tremor_raw": 0.13346019867411407,
+    "formant_raw": 0.9688742693851551
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.7424750939293459,
+    "tremor_raw": 0.04606709121431921,
+    "formant_raw": 0.9484551635641242
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.7772522726583155,
+    "tremor_raw": 0.1198990293423453,
+    "formant_raw": 0.9902768855076375
+  },
+  {
+    "file": "hindi_ai_voice.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.782901848151225,
+    "tremor_raw": 0.2026788735402134,
+    "formant_raw": 0.012333673748734031
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.767821792291803,
+    "tremor_raw": 0.031018797300355012,
+    "formant_raw": 0.993348690396961
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7303640314780706,
+    "tremor_raw": 0.04934234915113005,
+    "formant_raw": 0.40088975929261245
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.6781146869262528,
+    "tremor_raw": 0.07236905008895518,
+    "formant_raw": 0.47367128220347404
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.692860422378812,
+    "tremor_raw": 0.08937136322415147,
+    "formant_raw": 0.9246302303255728
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.731092532520965,
+    "tremor_raw": 0.061153369586450894,
+    "formant_raw": 0.7507622171223937
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.7243571556071342,
+    "tremor_raw": 0.10302364732828286,
+    "formant_raw": 0.7489567780007427
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.7185438117022495,
+    "tremor_raw": 0.056746730197861396,
+    "formant_raw": 0.9974944873416737
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.6989481088364827,
+    "tremor_raw": 0.09655641643902198,
+    "formant_raw": 0.9993631512962109
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7950820674122454,
+    "tremor_raw": 0.11192792887519129,
+    "formant_raw": 0.9898029811375558
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.8840616952554976,
+    "tremor_raw": 0.019575926137167306,
+    "formant_raw": 0.5296418871223582
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.8801092790058795,
+    "tremor_raw": 0.049474081523837254,
+    "formant_raw": 0.07265646106638926
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.7895468931569454,
+    "tremor_raw": 0.07084839973874017,
+    "formant_raw": 0.8243074173954207
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.7212483130857344,
+    "tremor_raw": 0.12240882859402265,
+    "formant_raw": 0.9991364867222812
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.7168360678287427,
+    "tremor_raw": 0.03573961402484341,
+    "formant_raw": 0.900187301762418
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.725305338453346,
+    "tremor_raw": 0.05807207670210619,
+    "formant_raw": 0.9435382564858825
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.7176200297662746,
+    "tremor_raw": 0.16771566818186381,
+    "formant_raw": 0.9898636739889555
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.7558081262233444,
+    "tremor_raw": 0.15018900529140244,
+    "formant_raw": 0.8872192153917577
+  },
+  {
+    "file": "new_ai_voice.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.7914875861095629,
+    "tremor_raw": 0.0380766005431266,
+    "formant_raw": 0.7814300554644769
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.8125357245552896,
+    "tremor_raw": 0.1390546753562994,
+    "formant_raw": 3.7806226757905994e-06
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.8442424629859464,
+    "tremor_raw": 0.0802280369751178,
+    "formant_raw": 0.00813812550580695
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.9111240640633018,
+    "tremor_raw": 0.11497086057076607,
+    "formant_raw": 0.7104419217802626
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.871250194267219,
+    "tremor_raw": 0.024017129742018535,
+    "formant_raw": 0.0001462686405561583
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.8674423142669324,
+    "tremor_raw": 0.04886403224012693,
+    "formant_raw": 1.3574884215204442e-11
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.8466106769945357,
+    "tremor_raw": 0.24516176107684995,
+    "formant_raw": 1.1719982195752803e-07
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.8683386289079548,
+    "tremor_raw": 0.03491692541319618,
+    "formant_raw": 0.001987260806366973
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.8373797418963198,
+    "tremor_raw": 0.1236698424930837,
+    "formant_raw": 0.002954011109992781
+  },
+  {
+    "file": "originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.8358170621243053,
+    "tremor_raw": 0.21497572184790664,
+    "formant_raw": 0.0002574148091900598
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7482080428735639,
+    "tremor_raw": 0.08531079923286419,
+    "formant_raw": 0.9930195301078418
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7162527367824777,
+    "tremor_raw": 0.14507417730389127,
+    "formant_raw": 0.8741421118792451
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7445167765297688,
+    "tremor_raw": 0.1259677031905374,
+    "formant_raw": 0.6742055454756978
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7042897414180137,
+    "tremor_raw": 0.10493613092554101,
+    "formant_raw": 0.9287019683474325
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7230877464145792,
+    "tremor_raw": 0.10904554434348,
+    "formant_raw": 0.7197172160885003
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.6064731728906416,
+    "tremor_raw": 0.09830846951962598,
+    "formant_raw": 0.779894285028544
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.6655284970275396,
+    "tremor_raw": 0.06387133873066766,
+    "formant_raw": 0.9545431064228206
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.6550666447873936,
+    "tremor_raw": 0.0026999982826541365,
+    "formant_raw": 0.9215341524955588
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7637874272509592,
+    "tremor_raw": 0.005858668135415578,
+    "formant_raw": 0.8334474103134297
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.7586327741251313,
+    "tremor_raw": 0.04057327575401904,
+    "formant_raw": 0.8334474103134297
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7983874641506459,
+    "tremor_raw": 0.21540873458094734,
+    "formant_raw": 0.8929972097834321
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.782237669138339,
+    "tremor_raw": 0.08228364540523729,
+    "formant_raw": 0.9842592741729141
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.7440456500772967,
+    "tremor_raw": 0.06193731861221527,
+    "formant_raw": 0.9881716442799778
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.6863433581247232,
+    "tremor_raw": 0.09562446014728448,
+    "formant_raw": 0.7102026245551567
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.6882077828772138,
+    "tremor_raw": 0.22018027395337506,
+    "formant_raw": 0.993513832037764
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.6075746974703801,
+    "tremor_raw": 0.05734663399894484,
+    "formant_raw": 0.9996990146126727
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.6657369612931767,
+    "tremor_raw": 0.019311452544522337,
+    "formant_raw": 0.9522215645674427
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.6902836247679768,
+    "tremor_raw": 0.03769050617632869,
+    "formant_raw": 0.9999781293943406
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.7128643464027088,
+    "tremor_raw": 0.048486981821734554,
+    "formant_raw": 0.40724141203761083
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.6687238539259134,
+    "tremor_raw": 0.050988063672242796,
+    "formant_raw": 0.9433587376480698
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.5673248716927144,
+    "tremor_raw": 0.03050727532727548,
+    "formant_raw": 0.9275717962764325
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.6021828606383373,
+    "tremor_raw": 0.032871096902041826,
+    "formant_raw": 0.8687085176026476
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 22,
+    "start_s": 11.0,
+    "pdi_raw": 0.631677376796264,
+    "tremor_raw": 0.13529263089686894,
+    "formant_raw": 0.97307615015933
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 23,
+    "start_s": 11.5,
+    "pdi_raw": 0.6719851962802406,
+    "tremor_raw": 0.08336444941622333,
+    "formant_raw": 0.980640857579775
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 24,
+    "start_s": 12.0,
+    "pdi_raw": 0.7336947045269563,
+    "tremor_raw": 0.043676605718658106,
+    "formant_raw": 0.9821224764471203
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 25,
+    "start_s": 12.5,
+    "pdi_raw": 0.7622623400766505,
+    "tremor_raw": 0.08550776677373505,
+    "formant_raw": 0.9912388778424309
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 26,
+    "start_s": 13.0,
+    "pdi_raw": 0.7615411268326259,
+    "tremor_raw": 0.07350114231463796,
+    "formant_raw": 0.9476475164613198
+  },
+  {
+    "file": "scam_bank_fraud.mp3",
+    "chunk_idx": 27,
+    "start_s": 13.5,
+    "pdi_raw": 0.6697247406526909,
+    "tremor_raw": 0.03310196419813917,
+    "formant_raw": 0.9722213870360701
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.6537264714047278,
+    "tremor_raw": 0.03639867702838183,
+    "formant_raw": 0.9272483994840646
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.6725278644797826,
+    "tremor_raw": 0.04944613007923929,
+    "formant_raw": 0.911611809505165
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7103508590176888,
+    "tremor_raw": 0.06894338818223879,
+    "formant_raw": 0.9910884525563307
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7991702548600153,
+    "tremor_raw": 0.11989025939493833,
+    "formant_raw": 0.9987639631922985
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7564953512215632,
+    "tremor_raw": 0.00801306901639949,
+    "formant_raw": 0.9982492483714327
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.740731747756289,
+    "tremor_raw": 0.026361632084028908,
+    "formant_raw": 0.9681851013882675
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.6839517559937892,
+    "tremor_raw": 0.037596198784019,
+    "formant_raw": 0.6729905901400054
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.7238189747260094,
+    "tremor_raw": 0.05158787552663392,
+    "formant_raw": 0.35574806378186596
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7491609057311333,
+    "tremor_raw": 0.05125512996421326,
+    "formant_raw": 0.4067840460760629
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.771388616725672,
+    "tremor_raw": 0.037041583641721144,
+    "formant_raw": 0.9350718617171644
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7212298082207865,
+    "tremor_raw": 0.06684692959784298,
+    "formant_raw": 0.9989314546255292
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.6656158014856203,
+    "tremor_raw": 0.07115299701421096,
+    "formant_raw": 0.9014057930035178
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.7099122164054915,
+    "tremor_raw": 0.0703310254724768,
+    "formant_raw": 0.9941761466366386
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.7024025724266154,
+    "tremor_raw": 0.10193141020138802,
+    "formant_raw": 0.9977903264844133
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.6707454847543568,
+    "tremor_raw": 0.17537225368635107,
+    "formant_raw": 0.9183273080244498
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.6684230013023048,
+    "tremor_raw": 0.14667250269524285,
+    "formant_raw": 0.7025221599411767
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.6482736229487209,
+    "tremor_raw": 0.036976151852477455,
+    "formant_raw": 0.9659705675872814
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.6630713340853052,
+    "tremor_raw": 0.03805694740366619,
+    "formant_raw": 0.9796435063800452
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.5862313698063474,
+    "tremor_raw": 0.03411087363323569,
+    "formant_raw": 0.9714453687648764
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.6683309220796831,
+    "tremor_raw": 0.10804245053822845,
+    "formant_raw": 0.9846979460006998
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.7147651699434582,
+    "tremor_raw": 0.04408744143707913,
+    "formant_raw": 0.6982370747940273
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.6900355341202671,
+    "tremor_raw": 0.06281563631723494,
+    "formant_raw": 0.7915094717024924
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 22,
+    "start_s": 11.0,
+    "pdi_raw": 0.722296152995517,
+    "tremor_raw": 0.06751668418582835,
+    "formant_raw": 0.8025483794007917
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 23,
+    "start_s": 11.5,
+    "pdi_raw": 0.71477695166695,
+    "tremor_raw": 0.0134987458290849,
+    "formant_raw": 0.9464628864718125
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 24,
+    "start_s": 12.0,
+    "pdi_raw": 0.7896038066225257,
+    "tremor_raw": 0.01275695631850798,
+    "formant_raw": 0.9852826304306349
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 25,
+    "start_s": 12.5,
+    "pdi_raw": 0.6868122814244241,
+    "tremor_raw": 0.08831598063595297,
+    "formant_raw": 0.6495249016408673
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 26,
+    "start_s": 13.0,
+    "pdi_raw": 0.7163435224460275,
+    "tremor_raw": 0.12103747104815624,
+    "formant_raw": 0.8319285455889246
+  },
+  {
+    "file": "scam_irs.mp3",
+    "chunk_idx": 27,
+    "start_s": 13.5,
+    "pdi_raw": 0.6701920810934829,
+    "tremor_raw": 0.06182529023875934,
+    "formant_raw": 0.6771931419195704
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7335194782498583,
+    "tremor_raw": 0.026650592407264573,
+    "formant_raw": 0.9371579236184375
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.6823390417485143,
+    "tremor_raw": 0.07722836062595761,
+    "formant_raw": 0.9995981174169578
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7281124621576016,
+    "tremor_raw": 0.05702392217696282,
+    "formant_raw": 0.6823633992753952
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.638801151283293,
+    "tremor_raw": 0.011038738917812048,
+    "formant_raw": 0.9733528127925157
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.6357725955136212,
+    "tremor_raw": 0.042183152916258675,
+    "formant_raw": 0.8613891424220177
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.6214409974336175,
+    "tremor_raw": 0.0344239842063921,
+    "formant_raw": 0.9239478226215571
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.6568626795404411,
+    "tremor_raw": 0.1109233392791751,
+    "formant_raw": 0.9088675717136305
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.6558179147164909,
+    "tremor_raw": 0.0795528319526475,
+    "formant_raw": 0.9892747836681338
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.6380100677644125,
+    "tremor_raw": 0.11034200969864505,
+    "formant_raw": 0.9867732391373383
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.6302207624788189,
+    "tremor_raw": 0.11948148140406895,
+    "formant_raw": 0.9996986987937075
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.6334179119678508,
+    "tremor_raw": 0.08805457952709034,
+    "formant_raw": 0.9825835990660061
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.6253186259091266,
+    "tremor_raw": 0.049719454265327714,
+    "formant_raw": 0.9955056435975947
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.6516228793887188,
+    "tremor_raw": 0.01452369473281702,
+    "formant_raw": 0.977726863367461
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.6928372502552249,
+    "tremor_raw": 0.057184970738055854,
+    "formant_raw": 0.785452326126714
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.6045154099170988,
+    "tremor_raw": 0.0754960296701694,
+    "formant_raw": 0.5743796536948258
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.6439295435699037,
+    "tremor_raw": 0.04596759644540036,
+    "formant_raw": 0.8211239683364465
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.6485437596499238,
+    "tremor_raw": 0.09290932903137523,
+    "formant_raw": 0.9258260503891036
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.6695835076327782,
+    "tremor_raw": 0.06716785099953947,
+    "formant_raw": 0.9770522269700398
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.6387046610195878,
+    "tremor_raw": 0.08890360926319565,
+    "formant_raw": 0.9366581283277314
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.6141882224655992,
+    "tremor_raw": 0.0702731615888252,
+    "formant_raw": 0.9428658507016123
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.6551584999404594,
+    "tremor_raw": 0.05862437946884662,
+    "formant_raw": 0.9995596296404095
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.7117969230703025,
+    "tremor_raw": 0.009457329153168414,
+    "formant_raw": 0.003444420241718425
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 22,
+    "start_s": 11.0,
+    "pdi_raw": 0.7474975107063062,
+    "tremor_raw": 0.029156115695775826,
+    "formant_raw": 0.0121545857006598
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 23,
+    "start_s": 11.5,
+    "pdi_raw": 0.68224836962827,
+    "tremor_raw": 0.029784636757238907,
+    "formant_raw": 0.9997731084457994
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 24,
+    "start_s": 12.0,
+    "pdi_raw": 0.6746555474047219,
+    "tremor_raw": 0.1111229937372755,
+    "formant_raw": 0.9960454761478688
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 25,
+    "start_s": 12.5,
+    "pdi_raw": 0.7044584976978652,
+    "tremor_raw": 0.08062657305252426,
+    "formant_raw": 0.8349415654832346
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 26,
+    "start_s": 13.0,
+    "pdi_raw": 0.6200273703397857,
+    "tremor_raw": 0.023773586594220682,
+    "formant_raw": 0.7762990647392805
+  },
+  {
+    "file": "scam_kidnapping.mp3",
+    "chunk_idx": 27,
+    "start_s": 13.5,
+    "pdi_raw": 0.5911667654588119,
+    "tremor_raw": 0.07079580273937329,
+    "formant_raw": 0.8085026718270332
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.6817593477820015,
+    "tremor_raw": 0.0698980305484797,
+    "formant_raw": 0.9230269050277652
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7006544770941846,
+    "tremor_raw": 0.059011680920818516,
+    "formant_raw": 0.8650578537318894
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7376903669140045,
+    "tremor_raw": 0.09401153888329744,
+    "formant_raw": 0.5345546082231541
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7516243021662966,
+    "tremor_raw": 0.12866076173988933,
+    "formant_raw": 0.85543954681115
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7284183274016572,
+    "tremor_raw": 0.06575663769370457,
+    "formant_raw": 0.9235772541539696
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.7265841762584072,
+    "tremor_raw": 0.14610020953304967,
+    "formant_raw": 0.9819958440119084
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.75535860256884,
+    "tremor_raw": 0.0808018772174202,
+    "formant_raw": 0.9595700714545727
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.733872813431739,
+    "tremor_raw": 0.03708592011449089,
+    "formant_raw": 0.9914631978972468
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.6718105546535057,
+    "tremor_raw": 0.05950319204479946,
+    "formant_raw": 0.9993919828462533
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.694018910378659,
+    "tremor_raw": 0.036844451956691296,
+    "formant_raw": 0.909805704502276
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7181208484990748,
+    "tremor_raw": 0.022473732102402645,
+    "formant_raw": 0.8486561471191745
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.7565357614842351,
+    "tremor_raw": 0.17881052246639365,
+    "formant_raw": 0.7954612816538228
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.7550641204031671,
+    "tremor_raw": 0.16655120589104613,
+    "formant_raw": 0.9808047119833876
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.7981046056385379,
+    "tremor_raw": 0.18905760165667954,
+    "formant_raw": 0.9527539810838026
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.7926232843999854,
+    "tremor_raw": 0.045516393475326246,
+    "formant_raw": 0.038037346216451565
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.7942012520737404,
+    "tremor_raw": 0.02061152102661867,
+    "formant_raw": 0.9670469916681761
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.7100979451934172,
+    "tremor_raw": 0.02178092438091701,
+    "formant_raw": 0.7958274914452399
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.6720637826228,
+    "tremor_raw": 0.034876318668110785,
+    "formant_raw": 0.8893275166104465
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.6854567741562863,
+    "tremor_raw": 0.04310645191248571,
+    "formant_raw": 0.9233265990351279
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.6815459147403572,
+    "tremor_raw": 0.03292652422939109,
+    "formant_raw": 0.9824193360209551
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.7164948048698608,
+    "tremor_raw": 0.034367568648330064,
+    "formant_raw": 0.9120755682720331
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 21,
+    "start_s": 10.5,
+    "pdi_raw": 0.6754180640286574,
+    "tremor_raw": 0.06261190633816922,
+    "formant_raw": 0.9983015752026507
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 22,
+    "start_s": 11.0,
+    "pdi_raw": 0.6632010993420768,
+    "tremor_raw": 0.018718557941398286,
+    "formant_raw": 0.9918940580984659
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 23,
+    "start_s": 11.5,
+    "pdi_raw": 0.6936520776869228,
+    "tremor_raw": 0.1009304317172768,
+    "formant_raw": 0.9235501311953493
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 24,
+    "start_s": 12.0,
+    "pdi_raw": 0.6568922249607546,
+    "tremor_raw": 0.02053008642223317,
+    "formant_raw": 0.9987373492203667
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 25,
+    "start_s": 12.5,
+    "pdi_raw": 0.7180699214691828,
+    "tremor_raw": 0.01816250218576516,
+    "formant_raw": 0.9469595407547665
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 26,
+    "start_s": 13.0,
+    "pdi_raw": 0.6653925742274273,
+    "tremor_raw": 0.07103912231099409,
+    "formant_raw": 0.9669722279252702
+  },
+  {
+    "file": "scam_tech_support.mp3",
+    "chunk_idx": 27,
+    "start_s": 13.5,
+    "pdi_raw": 0.7178013984512497,
+    "tremor_raw": 0.0661221183699925,
+    "formant_raw": 0.9994368403800649
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.8356088848991304,
+    "tremor_raw": 0.04825442523270838,
+    "formant_raw": 0.9435593197283412
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 1,
+    "start_s": 0.5,
+    "pdi_raw": 0.7883422985893681,
+    "tremor_raw": 0.05674174104626285,
+    "formant_raw": 0.960413995997549
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 2,
+    "start_s": 1.0,
+    "pdi_raw": 0.7504785686956753,
+    "tremor_raw": 0.061102087502582766,
+    "formant_raw": 0.8577896100749367
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 3,
+    "start_s": 1.5,
+    "pdi_raw": 0.7447467293235127,
+    "tremor_raw": 0.03764091996673939,
+    "formant_raw": 0.9004287637752937
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 4,
+    "start_s": 2.0,
+    "pdi_raw": 0.7608283163120477,
+    "tremor_raw": 0.029805834765462048,
+    "formant_raw": 0.7192464137589041
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 5,
+    "start_s": 2.5,
+    "pdi_raw": 0.7898127931927053,
+    "tremor_raw": 0.04141930777238362,
+    "formant_raw": 0.8597195831829689
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 6,
+    "start_s": 3.0,
+    "pdi_raw": 0.8233055767427753,
+    "tremor_raw": 0.03921043114451474,
+    "formant_raw": 0.7664289752839323
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 7,
+    "start_s": 3.5,
+    "pdi_raw": 0.8097130863285679,
+    "tremor_raw": 0.03191101810048583,
+    "formant_raw": 0.9054846059961733
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 8,
+    "start_s": 4.0,
+    "pdi_raw": 0.7870432129692884,
+    "tremor_raw": 0.06410377528844667,
+    "formant_raw": 0.8806616420623941
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 9,
+    "start_s": 4.5,
+    "pdi_raw": 0.7807522405197771,
+    "tremor_raw": 0.06824864883782118,
+    "formant_raw": 0.9863753735341338
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 10,
+    "start_s": 5.0,
+    "pdi_raw": 0.7673527755877309,
+    "tremor_raw": 0.042507271296203915,
+    "formant_raw": 0.9293956402879294
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 11,
+    "start_s": 5.5,
+    "pdi_raw": 0.8164473826819263,
+    "tremor_raw": 0.08451030071004824,
+    "formant_raw": 0.9990786950494598
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 12,
+    "start_s": 6.0,
+    "pdi_raw": 0.8044811879817619,
+    "tremor_raw": 0.10207130333251328,
+    "formant_raw": 0.999495683785361
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 13,
+    "start_s": 6.5,
+    "pdi_raw": 0.8227371075493979,
+    "tremor_raw": 0.17139492774576495,
+    "formant_raw": 0.9957669655976453
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 14,
+    "start_s": 7.0,
+    "pdi_raw": 0.8234991623511164,
+    "tremor_raw": 0.2885183150983289,
+    "formant_raw": 0.9952292074655174
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 15,
+    "start_s": 7.5,
+    "pdi_raw": 0.8397426970663152,
+    "tremor_raw": 0.2434418752834882,
+    "formant_raw": 0.9215217178153401
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 16,
+    "start_s": 8.0,
+    "pdi_raw": 0.8306794422428049,
+    "tremor_raw": 0.21742155885196743,
+    "formant_raw": 0.9828359945019933
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 17,
+    "start_s": 8.5,
+    "pdi_raw": 0.8340168736559975,
+    "tremor_raw": 0.20443793942777932,
+    "formant_raw": 0.9993093074317422
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 18,
+    "start_s": 9.0,
+    "pdi_raw": 0.7932303566613506,
+    "tremor_raw": 0.09979367364385311,
+    "formant_raw": 0.9998565014079276
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 19,
+    "start_s": 9.5,
+    "pdi_raw": 0.840882152912183,
+    "tremor_raw": 0.1267230554372237,
+    "formant_raw": 0.927366241767744
+  },
+  {
+    "file": "sdking79-man-talking-unintelligibly-1-546038.mp3",
+    "chunk_idx": 20,
+    "start_s": 10.0,
+    "pdi_raw": 0.8699500727064978,
+    "tremor_raw": 0.06332739492390393,
+    "formant_raw": 0.9605668442920535
+  },
+  {
+    "file": "universfield-are-you-home-voice-clip-323554.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7777688660459263,
+    "tremor_raw": 0.055832414358601555,
+    "formant_raw": 0.9786731543520577
+  },
+  {
+    "file": "universfield-female-voice-good-morning-242169.mp3",
+    "chunk_idx": 0,
+    "start_s": 0.0,
+    "pdi_raw": 0.7517626800472377,
+    "tremor_raw": 0.13232781633768131,
+    "formant_raw": 0.7932244449829947
+  }
+]

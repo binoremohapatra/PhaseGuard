@@ -438,8 +438,9 @@ async def draft_escalation(
     if not session:
         raise HTTPException(status_code=404, detail="Call session not found")
 
+    # Allow reporting even if factcheck_history is empty (e.g. pure deepfake detected)
     if not session.factcheck_history:
-        raise HTTPException(status_code=400, detail="No fact-check results yet — call in progress")
+        logger.warning("Drafting report with empty factcheck_history")
 
     from forensics.hashing import compute_audio_hash
     from escalation.drafter import draft_email_payload, draft_webhook_payload

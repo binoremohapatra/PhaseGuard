@@ -77,6 +77,8 @@ async def _bispectrum_loop(call_id: str) -> None:
 
     logger.debug("bispectrum_loop started: call_id=%r window=%d cadence=%.3fs",
                  call_id, window_n, cadence)
+                 
+    uncertain_streak = 0
 
     while session.state not in (CallState.ENDED,):
         try:
@@ -121,6 +123,19 @@ async def _bispectrum_loop(call_id: str) -> None:
                 "reason": ensemble["reason"],
                 "ts": _ts(),
             })
+
+            if ensemble["label"] == "UNCERTAIN":
+                uncertain_streak += 1
+                if uncertain_streak == 3:
+                    await manager.send_json(call_id, {
+                        "type": "factcheck_update",
+                        "status": "WARNING",
+                        "message": "⚠️ Audio authenticity uncertain (potential voice cloning or heavy noise). Do not share sensitive information while we fact-check the conversation.",
+                        "evidence_urls": [],
+                        "ts": _ts(),
+                    })
+            else:
+                uncertain_streak = 0
 
             await asyncio.sleep(cadence)
 

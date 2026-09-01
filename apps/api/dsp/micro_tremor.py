@@ -99,48 +99,33 @@ def compute_tremor_score(
     # Step 2: Instantaneous amplitude envelope
     envelope = np.abs(analytic)  # shape: (N,)
 
-    # Step 3: Remove DC from envelope (envelope is always positive, has large DC)
-    envelope -= envelope.mean()
-
-    # Step 4: Low-pass filter the envelope to isolate slow modulations (≤ 20 Hz)
-    # Nyquist for envelope modulation analysis at 16kHz is 8kHz — but we only
-    # care about 6–14 Hz, so downsample the envelope first for efficiency.
-    decimate_factor = max(1, fs // 200)  # downsample to ~200 Hz
+    # Step 3: Decimate to ~200 Hz
+    decimate_factor = max(1, fs // 200)
     envelope_ds = signal.decimate(envelope, decimate_factor, zero_phase=True)
-    fs_ds = fs // decimate_factor  # decimated sample rate
+    fs_ds = fs // decimate_factor
 
-    # Step 5: Bandpass envelope in tremor band (6–14 Hz)
-    nyq_ds = fs_ds / 2.0
-    if _ENVELOPE_FILTER_HIGH >= nyq_ds:
-        # Can't filter if Nyquist is too low after decimation
-        logger.warning(
-            "compute_tremor_score: decimated fs_ds=%d Hz too low for %d Hz filter",
-            fs_ds,
-            _ENVELOPE_FILTER_HIGH,
-        )
-        tremor_band = envelope_ds
-    else:
-        low_norm = _ENVELOPE_FILTER_LOW / nyq_ds
-        high_norm = _ENVELOPE_FILTER_HIGH / nyq_ds
-        sos = signal.butter(4, [low_norm, high_norm], btype="band", output="sos")
-        tremor_band = signal.sosfiltfilt(sos, envelope_ds)
+    # Step 4: Remove DC from the downsampled envelope
+    envelope_ds -= envelope_ds.mean()
 
-    # Step 6: FFT of filtered envelope for spectral analysis
+    # Step 5: Direct FFT of the envelope
     N_ds = len(envelope_ds)
-    fft_env = np.fft.rfft(tremor_band * np.hanning(len(tremor_band)), n=N_ds)
+    windowed = envelope_ds * np.hanning(N_ds)
+    fft_env = np.fft.rfft(windowed, n=N_ds)
     psd = np.abs(fft_env) ** 2
     freqs_ds = np.fft.rfftfreq(N_ds, d=1.0 / fs_ds)
 
-    # Step 7: Tremor energy = PSD sum in [8–12 Hz] / total PSD
+    # Step 6: Tremor energy = PSD sum in [8–12 Hz] / PSD sum in physiological AC band [1-20 Hz]
+    valid_mask = (freqs_ds >= 1.0) & (freqs_ds <= 20.0)
     tremor_mask = (freqs_ds >= _TREMOR_LOW_HZ) & (freqs_ds <= _TREMOR_HIGH_HZ)
-    total_power = psd.sum()
+    
+    total_valid_power = psd[valid_mask].sum()
     tremor_power = psd[tremor_mask].sum()
 
-    if total_power < 1e-12:
+    if total_valid_power < 1e-12:
         tremor_energy = 0.0
         peak_hz = 0.0
     else:
-        tremor_energy = float(np.clip(tremor_power / total_power, 0.0, 1.0))
+        tremor_energy = float(np.clip(tremor_power / total_valid_power, 0.0, 1.0))
         if tremor_mask.any() and psd[tremor_mask].size > 0:
             peak_hz = float(freqs_ds[tremor_mask][np.argmax(psd[tremor_mask])])
         else:
