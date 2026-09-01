@@ -47,3 +47,13 @@ smoke_test_*.py
 cloudflared*.exe
 fake_entity_output.txt
 reputation_store.json
+
+# Audio and Datasets
+*.wav
+*.mp3
+*.raw
+*.flac
+apps/api/dataset_v2/
+apps/api/dataset_v3_holdout/
+apps/api/holdout_dataset/
+apps/api/samples/synthetic/
