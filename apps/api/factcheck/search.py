@@ -11,15 +11,23 @@ from tavily import TavilyClient
 logger = logging.getLogger(__name__)
 
 async def _search_tavily(query: str) -> dict:
-    tavily_api_key = os.getenv("TAVILY_API_KEY", "")
+    from core.config import get_settings
+    tavily_api_key = get_settings().tavily_api_key
     if not tavily_api_key:
         raise ValueError("TAVILY_API_KEY not set")
     
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=2.5) as client:
         payload = {"api_key": tavily_api_key, "query": query, "search_depth": "advanced"}
-        resp = await client.post("https://api.tavily.com/search", json=payload)
-        resp.raise_for_status()
-        response = resp.json()
+        try:
+            resp = await client.post("https://api.tavily.com/search", json=payload)
+            resp.raise_for_status()
+            response = resp.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Tavily HTTP Error {e.response.status_code}: {e.response.text}")
+            raise
+        except Exception as e:
+            logger.error(f"Tavily Exception: {type(e).__name__} - {str(e)}")
+            raise
         
     snippets = [res.get("content", "") for res in response.get("results", []) if res.get("content")]
     context = "\n".join(snippets)
@@ -28,8 +36,14 @@ async def _search_tavily(query: str) -> dict:
     return {"source_tier": "Tavily", "context": context[:2500], "success": True}
 
 async def _search_jina(query: str) -> dict:
-    async with httpx.AsyncClient(timeout=5.0) as client:
-        resp = await client.get(f"https://s.jina.ai/{query}", headers={"Accept": "text/plain", "X-Retain-Images": "none"})
+    from core.config import get_settings
+    jina_api_key = get_settings().jina_api_key
+    if not jina_api_key:
+        raise ValueError("JINA_API_KEY not set")
+        
+    async with httpx.AsyncClient(timeout=2.0) as client:
+        headers = {"Accept": "text/plain", "X-Retain-Images": "none", "Authorization": f"Bearer {jina_api_key}"}
+        resp = await client.get(f"https://s.jina.ai/{query}", headers=headers)
         resp.raise_for_status()
         context = resp.text[:2500]
         if not context.strip():
@@ -37,10 +51,11 @@ async def _search_jina(query: str) -> dict:
         return {"source_tier": "Jina AI", "context": context, "success": True}
 
 async def _search_serper(query: str) -> dict:
-    serper_api_key = os.getenv("SERPER_API_KEY", "")
+    from core.config import get_settings
+    serper_api_key = get_settings().serper_api_key
     if not serper_api_key:
         raise ValueError("SERPER_API_KEY not set")
-    async with httpx.AsyncClient(timeout=5.0) as client:
+    async with httpx.AsyncClient(timeout=2.0) as client:
         headers = {"X-API-KEY": serper_api_key, "Content-Type": "application/json"}
         payload = {"q": query, "gl": "in", "hl": "en", "num": 3}
         resp = await client.post("https://google.serper.dev/search", headers=headers, json=payload)
@@ -55,7 +70,7 @@ async def _search_serper(query: str) -> dict:
 
 async def _search_ddg(query: str) -> dict:
     loop = asyncio.get_running_loop()
-    results = await loop.run_in_executor(None, lambda: DDGS(timeout=5.0).text(query, max_results=3))
+    results = await loop.run_in_executor(None, lambda: DDGS(timeout=2.0).text(query, max_results=3))
     snippets = [res.get("body", "") for res in results if res.get("body")]
     context = "\n".join(snippets)
     if not context.strip():
@@ -64,45 +79,48 @@ async def _search_ddg(query: str) -> dict:
 
 async def execute_resilient_search(query: str) -> dict:
     """
-    Concurrent Search Pipeline:
-    Fires all available search tiers at once. The first one to return a valid
-    non-empty result wins. Max total wait time is 6 seconds.
+    Sequential Fallback Search Pipeline:
+    Tries Tavily first. If it fails or times out, falls back to Serper, then DuckDuckGo, then Jina.
     """
-    logger.info(f"Executing concurrent search for: {query}")
+    logger.info(f"Executing search fallback chain for: {query}")
     
-    tasks = [
-        asyncio.create_task(_search_tavily(query), name="Tavily"),
-        asyncio.create_task(_search_jina(query), name="Jina AI"),
-        asyncio.create_task(_search_serper(query), name="Serper.dev"),
-        asyncio.create_task(_search_ddg(query), name="DuckDuckGo")
-    ]
-    
-    # We want the FIRST successful result, but if one fails quickly, we wait for others.
-    start_time = asyncio.get_running_loop().time()
-    timeout = 6.0
-    
+    # 1. Tavily (AI Search - Best Quality)
     try:
-        for fut in asyncio.as_completed(tasks, timeout=timeout):
-            try:
-                result = await fut
-                if result and result.get("success"):
-                    logger.info(f"Search won by {result['source_tier']} in {asyncio.get_running_loop().time() - start_time:.2f}s")
-                    # Cancel remaining
-                    for t in tasks:
-                        if not t.done():
-                            t.cancel()
-                    return result
-            except Exception as e:
-                # One of the tiers failed, continue to the next completed one
-                continue
-    except asyncio.TimeoutError:
-        logger.error(f"Search timed out after {timeout}s for all concurrent tiers")
-    
-    # Cancel any hanging tasks
-    for t in tasks:
-        if not t.done():
-            t.cancel()
+        res = await _search_tavily(query)
+        if res.get("success"):
+            logger.info("Search succeeded via Tavily")
+            return res
+    except Exception as e:
+        logger.warning(f"Tavily search failed: {type(e).__name__} - {str(e)}")
+        
+    # 2. Serper.dev (Google Raw)
+    try:
+        res = await _search_serper(query)
+        if res.get("success"):
+            logger.info("Search succeeded via Serper.dev")
+            return res
+    except Exception as e:
+        logger.warning(f"Serper search failed: {type(e).__name__} - {str(e)}")
 
+    # 3. DuckDuckGo (Raw)
+    try:
+        res = await _search_ddg(query)
+        if res.get("success"):
+            logger.info("Search succeeded via DuckDuckGo")
+            return res
+    except Exception as e:
+        logger.warning(f"DuckDuckGo search failed: {type(e).__name__} - {str(e)}")
+
+    # 4. Jina AI (Raw Text)
+    try:
+        res = await _search_jina(query)
+        if res.get("success"):
+            logger.info("Search succeeded via Jina AI")
+            return res
+    except Exception as e:
+        logger.warning(f"Jina AI search failed: {type(e).__name__} - {str(e)}")
+
+    logger.error("All search tiers failed")
     return {
         "source_tier": "None",
         "context": "web verification unavailable",
@@ -129,8 +147,15 @@ class SearchVerifier:
         if not query:
             query = "scam check"
             
-        result = await execute_resilient_search(query)
+        try:
+            # Global latency budget: max 4.0 seconds across all tiers
+            result = await asyncio.wait_for(execute_resilient_search(query), timeout=4.0)
+        except asyncio.TimeoutError:
+            logger.error(f"Global search timeout (4.0s) exceeded for query: {query}")
+            result = {"source_tier": "Timeout", "context": "", "success": False}
+            
         return {
+            "query_used": query,
             "source": result.get("source_tier", "Unknown"),
             "context": result.get("context", ""),
             "results": [{"body": result.get("context", "")}] if result.get("context") else [],

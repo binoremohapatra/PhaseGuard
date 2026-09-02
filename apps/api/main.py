@@ -122,6 +122,7 @@ class CallInitRequest(BaseModel):
     """Body for POST /call/init"""
     ingestion_mode: str = "browser_mic"  # "browser_mic" | "exotel" | "twilio"
     call_id: Optional[str] = None
+    caller_number: Optional[str] = None
 
 class CallInitResponse(BaseModel):
     call_id: str
@@ -180,7 +181,7 @@ async def init_call(request: Request, body: CallInitRequest = Body(...)) -> Call
     token = create_call_token(call_id)
 
     # Create session in connection manager
-    manager.create_session(call_id, ingestion_mode=body.ingestion_mode)
+    manager.create_session(call_id, ingestion_mode=body.ingestion_mode, caller_number=body.caller_number)
 
     ws_url = f"ws://{cfg.ws_host}:{cfg.ws_port}/ws/call/{call_id}?token={token}"
     logger.info("Call initialized: call_id=%r mode=%r", call_id, body.ingestion_mode)
@@ -218,6 +219,36 @@ async def activate_scambait(
     manager.activate_scambaiter(call_id)
     logger.info("Scambaiter activated via REST: call_id=%r", call_id)
     return {"status": "scambaiter_active", "call_id": call_id, "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@app.post("/call/{call_id}/test_inject")
+async def test_inject(
+    request: Request,
+    call_id: str,
+    text: str,
+) -> dict:
+    """
+    Test endpoint to inject text as if it came from STT.
+    """
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
+
+    session.transcript_history.append(text)
+    if session.state == CallState.SCAMBAITER_ACTIVE:
+        session.scambaiter_queue.put_nowait(text)
+    else:
+        # Fake a critical alert to trigger the scambaiter logic in tests
+        await manager.send_json(call_id, {
+            "type": "factcheck_update",
+            "status": "CRITICAL",
+            "message": "critical_alert",
+            "evidence_urls": [],
+            "ts": datetime.now(timezone.utc).isoformat(),
+        })
+
+    logger.info("Injected test speech: call_id=%r text=%r", call_id, text)
+    return {"status": "injected", "text": text}
 
 
 @app.post("/call/{call_id}/frame")

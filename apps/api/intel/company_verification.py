@@ -163,17 +163,22 @@ async def _check_presence_split(
             logger.warning("Search failed for %r: %s", name, exc)
             return False
 
-    try:
-        scam_found  = await _search_with_name_check(scam_query)
-    except Exception as exc:
-        logger.warning("Scam-check search failed for %r: %s", name, exc)
+    scam_task = asyncio.create_task(_search_with_name_check(scam_query))
+    policy_task = asyncio.create_task(_search_with_name_check(policy_query))
+    
+    scam_res, policy_res = await asyncio.gather(scam_task, policy_task, return_exceptions=True)
+    
+    if isinstance(scam_res, Exception):
+        logger.warning("Scam-check search failed for %r: %s", name, scam_res)
         scam_found = False
-
-    try:
-        policy_found = await _search_with_name_check(policy_query)
-    except Exception as exc:
-        logger.warning("Policy-check search failed for %r: %s", name, exc)
+    else:
+        scam_found = scam_res
+        
+    if isinstance(policy_res, Exception):
+        logger.warning("Policy-check search failed for %r: %s", name, policy_res)
         policy_found = False
+    else:
+        policy_found = policy_res
 
 
     sources: List[str] = []
@@ -236,13 +241,19 @@ async def verify_entity(
             domain_age_days, domain_flag = _check_domain_age(bare_domain)
 
     # ── Public presence check — split into scam vs policy ────────────────────
-    parent_scam, parent_policy, presence_sources = await _check_presence_split(name, context_terms)
+    parent_task = asyncio.create_task(_check_presence_split(name, context_terms))
+    
+    sub_task = None
+    if sub_entity and sub_entity.lower() != name.lower():
+        sub_task = asyncio.create_task(_check_presence_split(sub_entity, context_terms))
+
+    parent_scam, parent_policy, presence_sources = await parent_task
     presence_found = parent_scam or parent_policy
 
     sub_scam:   Optional[bool] = None
     sub_policy: Optional[bool] = None
-    if sub_entity and sub_entity.lower() != name.lower():
-        sub_scam, sub_policy, _ = await _check_presence_split(sub_entity, context_terms)
+    if sub_task:
+        sub_scam, sub_policy, _ = await sub_task
 
     # ── Confidence note builder ───────────────────────────────────────────────
     signals: List[str] = []

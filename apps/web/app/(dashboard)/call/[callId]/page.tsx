@@ -27,6 +27,13 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
   const [isScreenCaptureActive, setIsScreenCaptureActive] = useState(false);
   // DSP enabled/disabled — off by default (real-world validation showed unreliable standalone results)
   const [isDspEnabled, setIsDspEnabled] = useState(false);
+  // Live transcript lines (final STT chunks from backend)
+  const [transcriptLines, setTranscriptLines] = useState<string[]>([]);
+  // Scambaiter exchange log: {caller, ai, ts} pairs
+  const [scambaiterLog, setScambaiterLog] = useState<{caller: string; ai: string; ts: string}[]>([]);
+  // Minimum 900ms display time for VERIFYING state — prevents flash
+  const verifyingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const transcriptEndRef = useRef<HTMLDivElement | null>(null);
 
   const wsClientRef = useRef<WsClient | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -89,16 +96,35 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
             setPdiScore(msg.pdi_score);
           } else if (msg.type === 'tremor_update') {
             setTremorEnergy(msg.tremor_energy);
+          } else if (msg.type === 'transcript_update') {
+            // Final STT chunks — append each as a new line and auto-scroll
+            setTranscriptLines(prev => [...prev, (msg as any).text]);
+          } else if (msg.type === 'scambaiter_turn') {
+            const turn = msg as any;
+            setScambaiterLog(prev => [...prev, { caller: turn.caller_text, ai: turn.ai_text, ts: turn.ts }]);
           } else if (msg.type === 'factcheck_update' || msg.type === 'ensemble_update') {
-            // Backend sends uppercase status (CRITICAL, SAFE, UNCERTAIN);
-            // AlertBanner matches lowercase. Normalize here.
+            // Backend sends uppercase status (CRITICAL, SAFE, UNCERTAIN, VERIFYING)
             const rawStatus = (msg as any).status || (msg as any).label || 'idle';
-            setAlertState((rawStatus as string).toLowerCase() as AlertStatus);
-            if ((rawStatus as string).toLowerCase() === 'critical') {
-              setHasReachedCritical(true);
-            }
-            if ((msg as any).message) {
-              setAlertMessage((msg as any).message);
+            const normalized = (rawStatus as string).toLowerCase() as AlertStatus;
+
+            if (normalized === 'verifying') {
+              // Show VERIFYING immediately — final verdict will overwrite it after pipeline
+              setAlertState('verifying');
+              setAlertMessage('Analyzing caller claims…');
+              if (verifyingTimerRef.current) clearTimeout(verifyingTimerRef.current);
+            } else {
+              // Enforce min 900ms on VERIFYING so it's always visible to judges
+              const applyFinalVerdict = () => {
+                setAlertState(normalized);
+                if (normalized === 'critical') setHasReachedCritical(true);
+                if ((msg as any).message) setAlertMessage((msg as any).message);
+                verifyingTimerRef.current = null;
+              };
+              if (verifyingTimerRef.current) {
+                // Already showing VERIFYING — schedule update after 900ms from now
+                clearTimeout(verifyingTimerRef.current);
+              }
+              verifyingTimerRef.current = setTimeout(applyFinalVerdict, 900);
             }
           } else if (msg.type === 'mode_update') {
             if (msg.mode === 'limited') {
@@ -132,10 +158,16 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
       if (wsClientRef.current) {
         wsClientRef.current.disconnect();
       }
+      if (verifyingTimerRef.current) clearTimeout(verifyingTimerRef.current);
       stopMic();
       stopScreenCapture();
     };
   }, [callId]);
+
+  // Auto-scroll transcript panel to latest line
+  useEffect(() => {
+    transcriptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [transcriptLines]);
 
   const startMic = async () => {
     try {
@@ -387,20 +419,125 @@ export default function CallDashboard({ params }: { params: Promise<{ callId: st
           </div>
         )}
 
-        {/* ── HERO SECTION: Live Fact-Check Transcript (Primary Detection Engine) ── */}
+        {/* ── LIVE TRANSCRIPT PANEL ── */}
+        <section
+          id="live-transcript-panel"
+          className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-inner"
+        >
+          <div className="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
+            <h3 className="text-gray-200 font-mono text-sm tracking-wider uppercase font-semibold">
+              🎙️ Live Transcript
+            </h3>
+            <div className="flex items-center gap-3">
+              {alertState === 'verifying' && (
+                <span className="flex items-center gap-1.5 text-xs font-mono text-blue-400 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping inline-block" />
+                  Analyzing claims…
+                </span>
+              )}
+              <span className="text-xs font-semibold tracking-widest uppercase bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full">
+                Primary Detection Engine
+              </span>
+            </div>
+          </div>
+          <div
+            className="min-h-[160px] max-h-[260px] overflow-y-auto space-y-2 font-mono text-sm pr-1"
+            style={{ scrollBehavior: 'smooth' }}
+          >
+            {transcriptLines.length === 0 ? (
+              <p className="italic text-gray-500">Waiting for speech…</p>
+            ) : (
+              transcriptLines.map((line, i) => (
+                <div
+                  key={i}
+                  className="flex gap-2 items-start transition-opacity duration-300"
+                  style={{ opacity: i === transcriptLines.length - 1 ? 1 : 0.55 }}
+                >
+                  <span className="text-gray-600 text-xs mt-0.5 select-none shrink-0">#{i + 1}</span>
+                  <p className="text-gray-200 leading-relaxed">{line}</p>
+                </div>
+              ))
+            )}
+            <div ref={transcriptEndRef} />
+          </div>
+        </section>
+
+        {/* ── SCAMBAITER EXCHANGE LOG (appears only when active) ── */}
+        {scambaiterLog.length > 0 && (
+          <section
+            id="scambaiter-log-panel"
+            className="rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(20,10,0,0.95) 0%, rgba(30,15,0,0.95) 100%)',
+              border: '1px solid rgba(251,146,60,0.35)',
+              boxShadow: '0 0 40px rgba(251,146,60,0.08)',
+            }}
+          >
+            <div
+              className="flex items-center gap-3 px-6 py-4 border-b"
+              style={{ borderColor: 'rgba(251,146,60,0.2)', background: 'rgba(251,146,60,0.05)' }}
+            >
+              <span className="text-xl">🤖</span>
+              <h3 className="text-orange-300 font-mono text-sm tracking-wider uppercase font-semibold">
+                Scambaiter Active — Exchange Log
+              </h3>
+              <span className="ml-auto text-xs font-mono text-orange-500">
+                {scambaiterLog.length} turn{scambaiterLog.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="p-5 space-y-4 max-h-[420px] overflow-y-auto">
+              {scambaiterLog.map((turn, i) => (
+                <div key={i} className="space-y-2 animate-fade-in">
+                  {/* Scammer line */}
+                  <div className="flex gap-3 items-start">
+                    <span
+                      className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full mt-0.5 whitespace-nowrap"
+                      style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)' }}
+                    >
+                      SCAMMER
+                    </span>
+                    <p className="text-gray-300 text-sm font-mono leading-relaxed">{turn.caller}</p>
+                  </div>
+                  {/* AI persona line */}
+                  <div className="flex gap-3 items-start">
+                    <span
+                      className="shrink-0 text-xs font-bold px-2 py-0.5 rounded-full mt-0.5 whitespace-nowrap"
+                      style={{ background: 'rgba(251,146,60,0.15)', color: '#fb923c', border: '1px solid rgba(251,146,60,0.3)' }}
+                    >
+                      RAMESH JI
+                    </span>
+                    <p className="text-orange-100 text-sm font-mono leading-relaxed italic">{turn.ai}</p>
+                  </div>
+                  {i < scambaiterLog.length - 1 && (
+                    <div className="border-b pt-2" style={{ borderColor: 'rgba(251,146,60,0.1)' }} />
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── FACT-CHECK STATUS SECTION ── */}
         <section className="bg-gray-900 border border-gray-800 rounded-xl p-6 shadow-inner">
           <div className="flex items-center justify-between border-b border-gray-800 pb-3 mb-4">
             <h3 className="text-gray-200 font-mono text-sm tracking-wider uppercase font-semibold">
               Real-Time Fact-Checker &amp; Claim Analysis
             </h3>
-            {/* "Primary Detection Engine" badge — mirrors legacy/frontend/index.html .primary-badge */}
             <span className="text-xs font-semibold tracking-widest uppercase bg-blue-900/60 text-blue-300 border border-blue-700 px-3 py-1 rounded-full">
               Primary Detection Engine
             </span>
           </div>
-          <div className="min-h-[200px] space-y-4 font-mono text-sm text-gray-300">
-            <p className="italic text-gray-500">Waiting for speech...</p>
-            {/* Transcript chunks would go here */}
+          <div className="min-h-[80px] font-mono text-sm text-gray-300 flex items-center">
+            {alertState === 'verifying' ? (
+              <span className="flex items-center gap-2 text-blue-400 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping inline-block" />
+                Analyzing claims against live web evidence…
+              </span>
+            ) : alertState === 'idle' ? (
+              <p className="italic text-gray-500">Waiting for speech…</p>
+            ) : (
+              <p className="text-gray-300 leading-relaxed">{alertMessage}</p>
+            )}
           </div>
         </section>
 

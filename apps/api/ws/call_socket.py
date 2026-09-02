@@ -36,6 +36,7 @@ import logging
 import time
 from datetime import datetime, timezone
 from typing import Optional
+import httpx
 
 import numpy as np
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -50,6 +51,8 @@ from factcheck.stt import STTAccumulator, transcribe_chunk
 from factcheck.verdict import generate_verdict
 from i18n.language_router import detect_language, get_hinglish_system_prompt_addon
 from ingestion.browser_mic import BrowserMicIngestion
+from intel.voip_pattern_detector import detect_voip_pattern
+from intel.number_reputation import get_reputation, report_number
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -363,7 +366,18 @@ async def _fire_scambaiter_turn(call_id: str, caller_speech: str) -> None:
     # Append to history
     session.scambaiter_log.append({"role": "user", "content": caller_speech})
     session.scambaiter_log.append({"role": "assistant", "content": response_text})
-    
+
+    # Broadcast the text exchange to frontend BEFORE audio so UI is ready
+    try:
+        await manager.send_json(call_id, {
+            "type": "scambaiter_turn",
+            "caller_text": caller_speech,
+            "ai_text": response_text,
+            "ts": _ts(),
+        })
+    except Exception as exc:
+        logger.warning("Failed to send scambaiter_turn JSON: %s", exc)
+
     # 2. Synthesize audio
     audio_bytes = await synthesize_speech(response_text, call_id=call_id)
     if not audio_bytes:
@@ -487,6 +501,14 @@ async def _stt_loop(call_id: str) -> None:
             full_transcript += " " + transcript
             session.transcript_history.append(transcript)
 
+            # Broadcast transcript chunk to frontend for live display
+            await manager.send_json(call_id, {
+                "type": "transcript_update",
+                "text": transcript,
+                "is_final": True,
+                "ts": _ts(),
+            })
+
             if session.state == CallState.SCAMBAITER_ACTIVE:
                 # Bypass fact-checking and queue the transcript directly for the scambaiter loop
                 # We do this immediately instead of waiting for claim_extractor to accumulate 50 chars
@@ -546,6 +568,25 @@ async def _stt_loop(call_id: str) -> None:
         except asyncio.CancelledError:
             logger.debug("stt_loop cancelled: call_id=%r", call_id)
             break
+        except (httpx.ConnectError, httpx.ReadTimeout, httpx.ConnectTimeout) as exc:
+            logger.warning("Network failure in STT loop [%s]: %s. Falling back to LIMITED mode.", call_id, exc)
+            if session.mode != "limited":
+                session.mode = "limited"
+                await manager.send_json(call_id, {
+                    "type": "mode_update",
+                    "mode": "limited",
+                    "ts": _ts()
+                })
+                # Send UNCERTAIN for current claim
+                await manager.send_json(call_id, {
+                    "type": "factcheck_update",
+                    "status": "UNCERTAIN",
+                    "message": "Network unavailable. Fact-checker is offline. Relying on local DSP.",
+                    "evidence_urls": [],
+                    "category": "UNKNOWN",
+                    "ts": _ts()
+                })
+            await asyncio.sleep(2.0)
         except Exception as exc:
             logger.error("stt_loop error [%s]: %s", call_id, exc)
             await asyncio.sleep(1.0)
@@ -596,6 +637,19 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
         "dsp_enabled": cfg.dsp_voice_detection_enabled,
         "ts": _ts(),
     })
+
+    # Perform and broadcast Number Intel if caller_number is provided
+    if session.caller_number:
+        voip_info = detect_voip_pattern(session.caller_number)
+        rep = get_reputation(session.caller_number)
+        await manager.send_json(call_id, {
+            "type": "number_intel",
+            "is_likely_voip": voip_info["is_likely_voip"],
+            "voip_confidence": voip_info["confidence"],
+            "times_reported": rep.get("times_reported", 0),
+            "registration_circle": "Delhi NCR" if session.caller_number.startswith("9198") else "Unknown",
+            "ts": _ts(),
+        })
 
     # ── PRIMARY: STT / Fact-Check loop — ALWAYS runs ──────────────────────────
     stt_task = asyncio.create_task(_stt_loop(call_id))

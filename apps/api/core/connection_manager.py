@@ -85,6 +85,7 @@ class CallSession:
 
     # Ingestion source info
     ingestion_mode: str = "browser_mic"
+    caller_number: Optional[str] = None
 
     # Operational mode — "full" (all services up) or "limited" (offline fallback active)
     # Set by accessibility/offline_fallback.py when LLM/network APIs consistently fail.
@@ -103,13 +104,13 @@ class ConnectionManager:
 
     # ── Session lifecycle ──────────────────────────────────────────────────────
 
-    def create_session(self, call_id: str, ingestion_mode: str = "browser_mic") -> CallSession:
+    def create_session(self, call_id: str, ingestion_mode: str = "browser_mic", caller_number: Optional[str] = None) -> CallSession:
         """Create and register a new CallSession."""
         if call_id in self._sessions:
             logger.warning("Session %r already exists — returning existing", call_id)
             return self._sessions[call_id]
 
-        session = CallSession(call_id=call_id, ingestion_mode=ingestion_mode)
+        session = CallSession(call_id=call_id, ingestion_mode=ingestion_mode, caller_number=caller_number)
         # Register DSP consumers on the buffer
         session.buffer.register_cursor("bispectrum")
         session.buffer.register_cursor("tremor")

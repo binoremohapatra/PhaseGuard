@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # ── Tavily (AI Search - Primary Factcheck) ────────────────────────────────
     tavily_api_key: str = Field(default="", description="Tavily API key")
 
+    # ── Jina (Raw Text Search Fallback) ───────────────────────────────────────
+    jina_api_key: str = Field(default="", description="Jina AI API key")
+
     # ── TTS Backend ────────────────────────────────────────────────────────────
     tts_backend: str = Field(default="gtts", description="TTS backend (gtts | mock)")
     tts_language: str = Field(default="hi", description="TTS language")

@@ -205,15 +205,10 @@ async def generate_verdict(
     authority = (claim or {}).get("claimed_authority", None)
     demands = (claim or {}).get("demands", [])
     context_terms = " ".join(demands) if demands else None
-    
-    if entities:
-        try:
-            from intel.company_verification import verify_entity
-            tasks = [verify_entity(name=e, sub_entity=authority, context_terms=context_terms) for e in entities[:3]]
-            entity_signals = list(await asyncio.gather(*tasks, return_exceptions=False))
-        except Exception as exc:
-            logger.warning("Verdict[%s]: entity verification failed: %s", call_id, exc)
-
+    # Real-time verdict relies purely on search results and claims to minimize latency.
+    # Entity/company verification is deferred to the post-call dossier generation phase 
+    # to avoid blocking the critical safety path.
+    entity_signals: List[dict] = []
     entity_context = _format_entity_context(entity_signals)
 
     user_prompt = _USER_PROMPT_TEMPLATE.format(
@@ -249,15 +244,34 @@ async def generate_verdict(
             if status not in _STATUS_VALUES:
                 status = "UNCERTAIN"
 
+            # Deterministic safety: if search failed/timed out, NEVER allow SAFE.
+            # A scammer could craft complex queries to intentionally timeout search;
+            # we must not silently pass them as verified-safe.
+            search_failed = (
+                not search_result
+                or search_result.get("error")
+                or search_result.get("source") in ("Timeout", "None", "stub")
+                or not search_result.get("results")
+            )
+            
+            if search_failed and status == "SAFE":
+                logger.warning(
+                    "Verdict[%s]: LLM returned SAFE but search was unavailable — overriding to UNCERTAIN",
+                    call_id,
+                )
+                status = "UNCERTAIN"
+                msg = data.get("message", "Analysis complete.")
+                msg += " (Web verification was unavailable — cannot confirm safety.)"
+            else:
+                msg = data.get("message", "Analysis complete.")
+                if search_result and search_result.get("source") == "stub":
+                    msg += " (Verdict based on voice/claim analysis only — web verification unavailable)"
+
             dt = (time.perf_counter() - t0) * 1000.0
             logger.info(
                 "Verdict[%s]: status=%s latency=%.0f ms (attempt %d)",
                 call_id, status, dt, attempt + 1,
             )
-
-            msg = data.get("message", "Analysis complete.")
-            if search_result and search_result.get("source") == "stub":
-                msg += " (Verdict based on voice/claim analysis only — web verification unavailable)"
 
             return VerdictResult(
                 status=status,
