@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Colors, Fonts } from '../constants/Colors';
 import GlassCard from './GlassCard';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import Waveform from './Waveform';
 
 const CallSimulation: React.FC = () => {
@@ -82,11 +82,17 @@ const CallSimulation: React.FC = () => {
           <Circle cx="100" cy="110" r="6" fill={Colors.lightBlue} />
           <Animated.View
             style={{
-              transform: [{ rotate: needleRotation }],
+              transform: [{
+                rotate: needleRotation.interpolate({
+                  inputRange: [-95, 0, 360],
+                  outputRange: ['-95deg', '0deg', '360deg'],
+                  extrapolate: 'clamp',
+                })
+              }],
               transformOrigin: '100px 110px',
             }}
           >
-            <line
+            <Line
               x1="100"
               y1="110"
               x2="100"
@@ -94,9 +100,6 @@ const CallSimulation: React.FC = () => {
               stroke="#ffffff"
               strokeWidth="3"
               strokeLinecap="round"
-              style={{
-                filter: 'drop-shadow(0 0 6px rgba(255,255,255,0.8))',
-              }}
             />
           </Animated.View>
         </Svg>
