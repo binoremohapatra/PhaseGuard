@@ -100,7 +100,7 @@ const SettingsScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Notifications & Protection</Text>
             {settings.slice(0, 3).map((setting) => renderSettingItem(setting))}
 
-            <Text style={styles.sectionTitle} style={{ marginTop: 20 }}>
+            <Text style={[styles.sectionTitle, { marginTop: 20 }]}>
               Information
             </Text>
             {settings.slice(3).map((setting) => renderSettingItem(setting))}
