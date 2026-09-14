@@ -1,5 +1,6 @@
 import re
 
+
 def detect_voip_pattern(phone_number: str) -> dict:
     """
     Detects if a number is likely a VoIP or spoofed number based on Indian numbering patterns.

@@ -30,14 +30,13 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import List
 
 logger = logging.getLogger(__name__)
 
 # ── Known injection patterns ───────────────────────────────────────────────────
 # These are common prompt injection phrases. The list is not exhaustive —
 # it is a hard baseline that is LLM-independent and cannot be overridden.
-_INJECTION_PATTERNS: List[re.Pattern] = [
+_INJECTION_PATTERNS: list[re.Pattern] = [
     re.compile(r"ignore\s+(?:all\s+)?previous\s+instructions?", re.IGNORECASE),
     re.compile(r"ignore\s+(?:your\s+)?(?:fraud|scam|security)\s+(?:detection|system)", re.IGNORECASE),
     re.compile(r"disregard\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|prompts?)", re.IGNORECASE),

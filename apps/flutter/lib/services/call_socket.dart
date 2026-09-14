@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'screen_audio_capture.dart';
 
 typedef JsonHandler = void Function(Map<String, dynamic> json);
 typedef BytesHandler = void Function(List<int> bytes);
@@ -14,8 +15,14 @@ class CallSocket {
   static const _maxReconnect = 5;
   static const _reconnectDelay = Duration(seconds: 2);
   static const _keepaliveInterval = Duration(minutes: 5); // Send ping every 5 minutes to prevent Render spindown
+  
+  // Screen audio capture
+  final ScreenAudioCapture _audioCapture = ScreenAudioCapture();
+  StreamSubscription<List<int>>? _audioSubscription;
+  bool _useScreenAudio = false;
 
   bool get isConnected => _channel != null;
+  bool get isCapturingAudio => _audioCapture.isCapturing;
 
   Future<void> connect({
     required String url,
@@ -111,5 +118,62 @@ class CallSocket {
     _sub = null;
     await _channel?.sink.close();
     _channel = null;
+    
+    // Stop audio capture
+    await stopScreenAudioCapture();
+  }
+  
+  /// Enable screen audio capture
+  Future<bool> enableScreenAudioCapture({int sampleRate = 16000}) async {
+    try {
+      final available = await _audioCapture.isAvailable();
+      if (!available) {
+        return false;
+      }
+      
+      final success = await _audioCapture.requestPermissionAndStart(sampleRate: sampleRate);
+      if (success) {
+        _useScreenAudio = true;
+        
+        // Subscribe to audio stream and send to WebSocket
+        _audioSubscription = _audioCapture.audioStream.listen((audioData) {
+          _sendAudioData(audioData);
+        });
+        
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  /// Disable screen audio capture
+  Future<void> stopScreenAudioCapture() async {
+    if (_useScreenAudio) {
+      await _audioSubscription?.cancel();
+      _audioSubscription = null;
+      await _audioCapture.stop();
+      _useScreenAudio = false;
+    }
+  }
+  
+  /// Send audio data to WebSocket
+  void _sendAudioData(List<int> audioData) {
+    if (_channel != null && isConnected) {
+      try {
+        _channel!.sink.add(audioData);
+      } catch (e) {
+        // Silently handle send errors
+      }
+    }
+  }
+  
+  /// Get screen audio capture status
+  bool get screenAudioEnabled => _useScreenAudio;
+  
+  /// Get screen audio capture device info
+  Future<Map<String, dynamic>> getScreenAudioDeviceInfo() async {
+    return await _audioCapture.getDeviceInfo();
   }
 }

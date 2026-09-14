@@ -27,7 +27,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +37,7 @@ _STATUS_VALUES = ("SAFE", "CRITICAL", "UNCERTAIN")
 class VerdictResult(TypedDict):
     status: str              # SAFE | CRITICAL | UNCERTAIN
     message: str             # Short human-readable explanation
-    evidence_urls: List[str]
+    evidence_urls: list[str]
     category: str
     hardcoded_critical: bool
     latency_ms: float
@@ -76,7 +76,7 @@ Provide your verdict as JSON:
 }}"""
 
 
-def _format_claim_summary(claim: Optional[dict]) -> str:
+def _format_claim_summary(claim: dict | None) -> str:
     if not claim:
         return "No structured claims extracted yet."
     lines = [
@@ -92,7 +92,7 @@ def _format_claim_summary(claim: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_search_summary(search: Optional[dict]) -> str:
+def _format_search_summary(search: dict | None) -> str:
     if not search or not search.get("results"):
         return "No web evidence found."
     lines = []
@@ -101,7 +101,7 @@ def _format_search_summary(search: Optional[dict]) -> str:
     return "\n".join(lines)
 
 
-def _format_entity_context(entity_signals: List[dict]) -> str:
+def _format_entity_context(entity_signals: list[dict]) -> str:
     """Format company verification signals for the LLM prompt context."""
     if not entity_signals:
         return "No entity verification performed."
@@ -120,8 +120,8 @@ def _format_entity_context(entity_signals: List[dict]) -> str:
 
 async def generate_verdict(
     transcript: str,
-    claim: Optional[dict],
-    search_result: Optional[dict],
+    claim: dict | None,
+    search_result: dict | None,
     call_id: str = "",
 ) -> VerdictResult:
     """
@@ -200,7 +200,7 @@ async def generate_verdict(
     )
 
     # Run company verification for each claimed entity (best-effort, no crash)
-    entity_signals: List[dict] = []
+    entity_signals: list[dict] = []
     entities = (claim or {}).get("entities_claimed", [])
     authority = (claim or {}).get("claimed_authority", None)
     demands = (claim or {}).get("demands", [])
@@ -208,7 +208,7 @@ async def generate_verdict(
     # Real-time verdict relies purely on search results and claims to minimize latency.
     # Entity/company verification is deferred to the post-call dossier generation phase 
     # to avoid blocking the critical safety path.
-    entity_signals: List[dict] = []
+    entity_signals: list[dict] = []
     entity_context = _format_entity_context(entity_signals)
 
     user_prompt = _USER_PROMPT_TEMPLATE.format(

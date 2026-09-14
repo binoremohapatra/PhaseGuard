@@ -1,15 +1,17 @@
+import os
 import sys
 from pathlib import Path
+
 import numpy as np
-import soundfile as sf
 import scipy.signal
+import soundfile as sf
 from gtts import gTTS
-import os
 
 # Add apps/api to sys.path so we can import dsp modules
 sys.path.append(str(Path(__file__).parent.parent))
 
 from dsp.phase_dispersion import compute_pdi
+
 
 def generate_synthetic_samples():
     sentences = [

@@ -12,7 +12,6 @@ Design:
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +21,7 @@ WARNING_PHRASES = {
     "hi": "चेतावनी। यह कॉल एक संभावित घोटाला (scam) है। कृपया अपनी निजी जानकारी साझा न करें और कोई भुगतान न करें।"
 }
 
-async def generate_warning_audio(language: str = "hi") -> Optional[bytes]:
+async def generate_warning_audio(language: str = "hi") -> bytes | None:
     """
     Generate spoken warning audio using TTS API.
     
@@ -32,19 +31,20 @@ async def generate_warning_audio(language: str = "hi") -> Optional[bytes]:
     phrase = WARNING_PHRASES.get(language, WARNING_PHRASES["en"])
     logger.info("Generating spoken warning in %s: %s", language, phrase)
     
-    from core.config import get_settings
-    cfg = get_settings()
-    
     # We use gtts as a default/fallback since it doesn't strictly require an API key
     try:
-        from gtts import gTTS
         import io
+
+        from gtts import gTTS
         
         tts = gTTS(text=phrase, lang=language)
         fp = io.BytesIO()
         tts.write_to_fp(fp)
         audio_bytes = fp.getvalue()
         return audio_bytes
-    except Exception as exc:
+    except ImportError as exc:
+        logger.error("gTTS library not available: %s", exc)
+        return None
+    except (OSError, ValueError) as exc:
         logger.error("Failed to generate TTS warning: %s", exc)
         return None

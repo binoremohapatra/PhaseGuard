@@ -37,7 +37,6 @@ from __future__ import annotations
 import audioop  # mulaw decode (stdlib, available in Python 3.11)
 import base64
 import logging
-from typing import Optional
 
 import numpy as np
 from scipy.signal import resample_poly

@@ -1,5 +1,7 @@
 import asyncio
+
 from factcheck.claim_extraction import ClaimExtractor
+
 
 async def main():
     phrases = [

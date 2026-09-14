@@ -25,9 +25,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-import time
 import wave
-from typing import Optional
 
 import numpy as np
 
@@ -62,9 +60,9 @@ def _is_silent(audio: np.ndarray, threshold: float = _SILENCE_RMS_THRESHOLD) -> 
 async def transcribe_chunk(
     audio: np.ndarray,
     fs: int = 16_000,
-    language: Optional[str] = None,
+    language: str | None = None,
     call_id: str = "",
-) -> Optional[str]:
+) -> str | None:
     """
     Send an audio chunk to Groq Whisper for transcription.
 
@@ -163,7 +161,7 @@ class STTAccumulator:
         """Return True if enough audio has accumulated for a Whisper call."""
         return self._total_samples >= self._min_samples
 
-    def get_chunk(self) -> Optional[np.ndarray]:
+    def get_chunk(self) -> np.ndarray | None:
         """
         Return the accumulated audio if ready, and reset the accumulator.
         Returns None if not yet ready.
@@ -178,7 +176,7 @@ class STTAccumulator:
         self._total_samples = 0
         return audio
 
-    def force_get(self) -> Optional[np.ndarray]:
+    def force_get(self) -> np.ndarray | None:
         """Return whatever has accumulated (used on call end)."""
         if not self._accumulated:
             return None

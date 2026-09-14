@@ -1,11 +1,13 @@
 import sys
 from pathlib import Path
+
 import numpy as np
 
 # Add apps/api to sys.path so we can import dsp modules
 sys.path.append(str(Path(__file__).parent.parent))
 
 from dsp.phase_dispersion import compute_pdi
+
 
 def generate_coherent_signal(fs: int, duration_sec: float) -> np.ndarray:
     """Generates a phase-coherent signal (simulating Natural human voice)."""

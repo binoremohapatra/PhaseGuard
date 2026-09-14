@@ -18,11 +18,11 @@ stays unblocked for all concurrent connections.
 from __future__ import annotations
 
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
 
 # Pool size: 4 threads handles ~4 concurrent calls without fighting each other.
 # Increase EXECUTOR_WORKERS via env if running many simultaneous calls.
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 _WORKERS = int(os.getenv("EXECUTOR_WORKERS", "4"))
 

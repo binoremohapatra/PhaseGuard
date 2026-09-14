@@ -18,10 +18,8 @@ ready to be sent back over the call's outbound audio path.
 
 from __future__ import annotations
 
-import io
 import logging
 import os
-from typing import Optional
 
 import numpy as np
 
@@ -31,7 +29,7 @@ _TTS_BACKEND = os.getenv("TTS_BACKEND", "gtts")
 _TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "hi")  # Hindi default for India-market
 
 
-async def synthesize_speech(text: str, call_id: str = "") -> Optional[bytes]:
+async def synthesize_speech(text: str, call_id: str = "") -> bytes | None:
     """
     Convert text to PCM16LE audio bytes.
 
@@ -63,16 +61,16 @@ async def synthesize_speech(text: str, call_id: str = "") -> Optional[bytes]:
         return await _gtts_synthesize(text)
 
 
-async def _gtts_synthesize(text: str) -> Optional[bytes]:
+async def _gtts_synthesize(text: str) -> bytes | None:
     """
     Synthesize via gTTS (free, no key).
     Returns PCM16LE bytes resampled to 16kHz.
     """
     try:
         import asyncio
-        from gtts import gTTS  # type: ignore[import]
         import io as _io
-        import wave
+
+        from gtts import gTTS  # type: ignore[import]
 
         def _sync_gtts() -> bytes:
             tts = gTTS(text=text, lang=_TTS_LANGUAGE, slow=True)
@@ -94,7 +92,7 @@ async def _gtts_synthesize(text: str) -> Optional[bytes]:
         return None
 
 
-async def _elevenlabs_synthesize(text: str) -> Optional[bytes]:
+async def _elevenlabs_synthesize(text: str) -> bytes | None:
     """
     Synthesize via ElevenLabs API.
     Requires ELEVENLABS_API_KEY and ELEVENLABS_VOICE_ID env vars.
@@ -124,8 +122,9 @@ async def _elevenlabs_synthesize(text: str) -> Optional[bytes]:
 
             # ElevenLabs returns MP3; convert to PCM16LE
             try:
-                from pydub import AudioSegment
                 import io as _io
+
+                from pydub import AudioSegment
 
                 segment = AudioSegment.from_mp3(_io.BytesIO(audio_bytes))
                 segment = segment.set_frame_rate(16000).set_channels(1).set_sample_width(2)
@@ -140,13 +139,12 @@ async def _elevenlabs_synthesize(text: str) -> Optional[bytes]:
         return None
 
 
-async def _gcloud_tts_synthesize(text: str) -> Optional[bytes]:
+async def _gcloud_tts_synthesize(text: str) -> bytes | None:
     """
     Synthesize via Google Cloud Text-to-Speech API.
     Requires GCP credentials (GOOGLE_APPLICATION_CREDENTIALS env var).
     """
     try:
-        import asyncio
         from google.cloud import texttospeech  # type: ignore[import]
 
         def _sync_gcloud() -> bytes:

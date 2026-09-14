@@ -1,11 +1,11 @@
 import asyncio
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 async def main():
-    from factcheck.search import _search_tavily, _search_serper, _search_ddg
+    from factcheck.search import _search_ddg, _search_serper, _search_tavily
     
     query = "CBI_DIGITAL_ARREST_SCAM CBI CBI Officer"
     print(f"Comparing search quality for query: '{query}'\n")

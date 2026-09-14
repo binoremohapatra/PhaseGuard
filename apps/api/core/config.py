@@ -76,6 +76,7 @@ class Settings(BaseSettings):
     # ── WhatsApp (text scanner) ────────────────────────────────────────────────
     whatsapp_phone_number_id: str = Field(default="")
     whatsapp_access_token: str = Field(default="")
+    whatsapp_app_secret: str = Field(default="", description="WhatsApp app secret for webhook verification")
 
     # ── Exotel (real-call ingestion, no hardware) ──────────────────────────────
     exotel_api_key: str = Field(default="", description="Exotel API key")

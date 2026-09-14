@@ -1,10 +1,10 @@
-import os
 import json
 import logging
-import asyncio
-from typing import Dict, Any
+import os
+from typing import Any
 
 from groq import AsyncGroq
+
 from .search import execute_resilient_search
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ class FactCheckVerifier:
         self.client = AsyncGroq(api_key=self.api_key)
         self.model = "openai/gpt-oss-120b"
 
-    async def verify_transcript(self, transcript: str) -> Dict[str, Any]:
+    async def verify_transcript(self, transcript: str) -> dict[str, Any]:
         """
         Orchestrates the entire fact-checking flow:
         1. Extract claim and form search query.
@@ -77,7 +77,7 @@ Respond ONLY with the search query text, or empty string. Do not include quotes 
             logger.error(f"Error during claim extraction: {e}")
             return ""
 
-    async def _synthesize_verdict(self, transcript: str, search_result: dict) -> Dict[str, Any]:
+    async def _synthesize_verdict(self, transcript: str, search_result: dict) -> dict[str, Any]:
         """
         Synthesize the final verdict using Llama-3.3 based on transcript and search context.
         """

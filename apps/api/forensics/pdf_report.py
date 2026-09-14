@@ -19,25 +19,26 @@ from __future__ import annotations
 import io
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import matplotlib
+
 matplotlib.use("Agg")  # Non-interactive backend for server-side rendering
 import matplotlib.pyplot as plt
 import numpy as np
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.platypus import (
     Image,
+    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
-    PageBreak,
 )
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ _MONO_STYLE = ParagraphStyle(
 )
 
 
-def _make_table(data: List[List[str]], col_widths=None) -> Table:
+def _make_table(data: list[list[str]], col_widths=None) -> Table:
     """Create a styled two-column info table."""
     t = Table(data, colWidths=col_widths or [5 * cm, 11 * cm])
     t.setStyle(
@@ -110,7 +111,7 @@ def _generate_spectrogram(
     pcm16_bytes: bytes,
     fs: int = 16_000,
     max_duration_seconds: float = 30.0,
-) -> Optional[bytes]:
+) -> bytes | None:
     """
     Generate a spectrogram PNG from PCM16LE audio bytes.
     Returns PNG bytes, or None if audio is empty.
@@ -147,19 +148,19 @@ def generate_forensic_pdf(
     call_start_time: str,
     call_duration_seconds: float,
     ingestion_mode: str,
-    hash_result: Dict[str, Any],
+    hash_result: dict[str, Any],
     peak_pdi: float,
-    tremor_findings: Dict[str, Any],
+    tremor_findings: dict[str, Any],
     ensemble_label: str,
-    identifiers: Dict[str, Any],
-    factcheck_history: List[Dict[str, Any]],
+    identifiers: dict[str, Any],
+    factcheck_history: list[dict[str, Any]],
     transcript_summary: str,
-    scambaiter_log: List[Dict[str, Any]],
-    escalation_records: List[Dict[str, Any]],
+    scambaiter_log: list[dict[str, Any]],
+    escalation_records: list[dict[str, Any]],
     pcm16_bytes: bytes,
     fs: int = 16_000,
-    entity_verification: Optional[List[Dict[str, Any]]] = None,
-    video_frames: Optional[List[Dict[str, Any]]] = None,
+    entity_verification: list[dict[str, Any]] | None = None,
+    video_frames: list[dict[str, Any]] | None = None,
 ) -> bytes:
     """
     Build the complete forensic PDF dossier.

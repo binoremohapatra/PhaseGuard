@@ -1,15 +1,17 @@
-import sys
 import os
+import sys
 from pathlib import Path
+
 import numpy as np
-import soundfile as sf
 import scipy.signal
+import soundfile as sf
 
 sys.path.append(str(Path(__file__).parent.parent))
 
+from dsp.ensemble_score import compute_formant_stability
 from dsp.micro_tremor import compute_tremor_score
 from dsp.phase_dispersion import compute_pdi
-from dsp.ensemble_score import compute_formant_stability
+
 
 def run_diagnostics():
     print("="*60)

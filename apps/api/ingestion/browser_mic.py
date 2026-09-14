@@ -17,7 +17,6 @@ WebSocket chattiness fix (§1.2):
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from dsp.audio_buffer import AudioBufferManager
 

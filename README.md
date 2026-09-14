@@ -6,25 +6,41 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 
 ---
 
+## Current Status
+
+**Fully Tested & Working:** LLM fact-checking (Groq), 4-tier search fallback (Tavily/Jina/Serper/DuckDuckGo), AI scambaiter (gTTS), forensic PDF dossier generation, company verification (WHOIS/MCA), WebSocket audio streaming, JWT authentication, rate limiting, and human-confirmed escalation to cybercrime cell/webhook.
+
+**Disabled-by-Design:** DSP voice detection (bispectrum PDI + micro-tremor) is disabled by default — real-world validation showed inverted/overlapping results vs gTTS audio. Set `DSP_VOICE_DETECTION_ENABLED=true` only for research/tuning, not live demos.
+
+**Simulated:** SMS/family alerts are logged only (no real SMS provider wired). Bhashini/MSG91 India localization is not integrated — using Groq's native multilingual support instead.
+
+**Untested-on-Real-Device:** Android/mobile call ingestion, Exotel/Twilio real-phone-call streaming (pluggable adapters exist but require paid numbers/minutes with no free tier available).
+
+---
+
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    Audio Ingestion Layer                         │
 │  browser_mic.py (WebSocket)  ←→  exotel_adapter.py (CPaaS)     │
+│  [ACTIVE: browser_mic]         [PLUGGABLE: Exotel/Twilio]       │
 │                   ↓ shared AudioBufferManager                    │
 ├──────────────┬──────────────┬──────────────────────────────────┤
 │  PILLAR 1    │  PILLAR 3    │  PILLAR 2                         │
 │  Bispectrum  │  Micro-Tremor│  LLM Fact-Checker                 │
 │  (150ms)     │  (1.5s)      │  STT→Claims→Search→Verdict (2-4s)│
+│  [DISABLED]  │  [DISABLED]  │  [ACTIVE]                         │
 │  ↓ PDI       │  ↓ tremor_E  │  ↓ SAFE/CRITICAL/UNCERTAIN        │
 │         ↓    │    ↓         │                                   │
 │      Ensemble Score (PDI+tremor+formant)                        │
 ├─────────────────────────────────────────────────────────────────┤
-│  PILLAR 4: AI Scambaiter (confused-elderly persona)             │
-│  PILLAR 5: Forensic PDF Dossier (1930 portal format)            │
-│  PILLAR 6: Authority Escalation Bridge (human-confirmed)        │
-│  PILLAR 7: India Localization (Hindi/Hinglish, Bhashini, MSG91) │
+│  PILLAR 4: AI Scambaiter (confused-elderly persona) [ACTIVE]   │
+│  PILLAR 5: Forensic PDF Dossier (1930 portal format) [ACTIVE]   │
+│  PILLAR 6: Authority Escalation Bridge (human-confirmed) [ACTIVE]│
+│  PILLAR 7: India Localization (Hindi/Hinglish) [PARTIAL]        │
+│          - Bhashini/MSG91: NOT WIRED                            │
+│          - Groq multilingual: ACTIVE                             │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -35,7 +51,7 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 ### 1. Install dependencies
 
 ```bash
-cd backend
+cd apps/api
 pip install -r requirements.txt
 ```
 
@@ -49,7 +65,7 @@ cp .env.example .env
 ### 3. Run the API
 
 ```bash
-cd backend
+cd apps/api
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -58,7 +74,7 @@ API docs available at: http://localhost:8000/docs
 ### 4. Run the DSP sanity test
 
 ```bash
-cd backend
+cd apps/api
 python scripts/synthetic_test.py
 ```
 

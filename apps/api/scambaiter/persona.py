@@ -22,10 +22,8 @@ Security hardening:
 
 from __future__ import annotations
 
-import asyncio
 import logging
 import re
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +63,7 @@ Example fictional details you CAN use (these are invented and useless):
 
 # ── Hard filter: block real identifiers from LLM output ───────────────────────
 # These patterns scan the GENERATED response — the LLM cannot override this check.
-_BLOCK_PATTERNS: List[re.Pattern] = [
+_BLOCK_PATTERNS: list[re.Pattern] = [
     re.compile(r"\b[6-9]\d{9}\b"),                          # 10-digit Indian mobile numbers
     re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),        # Aadhaar number (12 digits)
     re.compile(r"\b[A-Z]{5}[0-9]{4}[A-Z]\b"),              # PAN card
@@ -94,9 +92,9 @@ def _sanitize_response(text: str) -> str:
 
 async def generate_scambaiter_response(
     caller_speech: str,
-    exchange_history: List[dict],
+    exchange_history: list[dict],
     call_id: str = "",
-) -> Optional[str]:
+) -> str | None:
     """
     Generate a scambaiter response to the caller's latest utterance.
 
@@ -116,8 +114,8 @@ async def generate_scambaiter_response(
         Generated response text (sanitized), or None on error.
     """
     import os
+
     from core.config import get_settings
-    from factcheck.injection_guard import wrap_transcript
 
     cfg = get_settings()
     if not cfg.groq_api_key:

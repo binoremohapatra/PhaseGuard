@@ -1,14 +1,16 @@
 import sys
 from pathlib import Path
+
 import numpy as np
-import soundfile as sf
 import scipy.signal
+import soundfile as sf
 
 # Add apps/api to sys.path so we can import dsp modules
 sys.path.append(str(Path(__file__).parent.parent))
 
 from dsp.micro_tremor import compute_tremor_score
 from dsp.phase_dispersion import compute_pdi
+
 
 def load_audio(path):
     sig, fs = sf.read(path)

@@ -1,12 +1,8 @@
-import logging
 import asyncio
-import os
-import traceback
-from typing import Dict, Any
+import logging
 
 import httpx
 from duckduckgo_search import DDGS
-from tavily import TavilyClient
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +22,7 @@ async def _search_tavily(query: str) -> dict:
             logger.error(f"Tavily HTTP Error {e.response.status_code}: {e.response.text}")
             raise
         except Exception as e:
-            logger.error(f"Tavily Exception: {type(e).__name__} - {str(e)}")
+            logger.error(f"Tavily Exception: {type(e).__name__} - {e!s}")
             raise
         
     snippets = [res.get("content", "") for res in response.get("results", []) if res.get("content")]
@@ -91,7 +87,7 @@ async def execute_resilient_search(query: str) -> dict:
             logger.info("Search succeeded via Tavily")
             return res
     except Exception as e:
-        logger.warning(f"Tavily search failed: {type(e).__name__} - {str(e)}")
+        logger.warning(f"Tavily search failed: {type(e).__name__} - {e!s}")
         
     # 2. Serper.dev (Google Raw)
     try:
@@ -100,7 +96,7 @@ async def execute_resilient_search(query: str) -> dict:
             logger.info("Search succeeded via Serper.dev")
             return res
     except Exception as e:
-        logger.warning(f"Serper search failed: {type(e).__name__} - {str(e)}")
+        logger.warning(f"Serper search failed: {type(e).__name__} - {e!s}")
 
     # 3. DuckDuckGo (Raw)
     try:
@@ -109,7 +105,7 @@ async def execute_resilient_search(query: str) -> dict:
             logger.info("Search succeeded via DuckDuckGo")
             return res
     except Exception as e:
-        logger.warning(f"DuckDuckGo search failed: {type(e).__name__} - {str(e)}")
+        logger.warning(f"DuckDuckGo search failed: {type(e).__name__} - {e!s}")
 
     # 4. Jina AI (Raw Text)
     try:
@@ -118,7 +114,7 @@ async def execute_resilient_search(query: str) -> dict:
             logger.info("Search succeeded via Jina AI")
             return res
     except Exception as e:
-        logger.warning(f"Jina AI search failed: {type(e).__name__} - {str(e)}")
+        logger.warning(f"Jina AI search failed: {type(e).__name__} - {e!s}")
 
     logger.error("All search tiers failed")
     return {

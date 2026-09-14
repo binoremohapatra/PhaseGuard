@@ -7,8 +7,10 @@ Simulated SMS provider for hackathon build.
 from __future__ import annotations
 
 import logging
-import httpx
 from datetime import datetime
+
+import httpx
+
 from core.config import get_settings
 
 logger = logging.getLogger(__name__)

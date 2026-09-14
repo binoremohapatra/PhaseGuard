@@ -33,12 +33,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import time
 from datetime import datetime, timezone
-from typing import Optional
-import httpx
 
-import numpy as np
+import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.auth import verify_ws_token
@@ -49,10 +46,10 @@ from factcheck.claim_extraction import ClaimExtractor
 from factcheck.search import SearchVerifier
 from factcheck.stt import STTAccumulator, transcribe_chunk
 from factcheck.verdict import generate_verdict
-from i18n.language_router import detect_language, get_hinglish_system_prompt_addon
+from i18n.language_router import detect_language
 from ingestion.browser_mic import BrowserMicIngestion
+from intel.number_reputation import get_reputation
 from intel.voip_pattern_detector import detect_voip_pattern
-from intel.number_reputation import get_reputation, report_number
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -97,8 +94,7 @@ async def _bispectrum_loop(call_id: str) -> None:
 
             # Update session peak
             session.latest_pdi = pdi_score
-            if pdi_score > session.peak_pdi:
-                session.peak_pdi = pdi_score
+            session.peak_pdi = max(session.peak_pdi, pdi_score)
 
             # Ensemble score (uses latest tremor too)
             ensemble = await analyze_ensemble(
@@ -181,8 +177,7 @@ async def _tremor_loop(call_id: str) -> None:
 
             tremor_result = await analyze_tremor(window, fs=cfg.sample_rate)
             session.latest_tremor_energy = tremor_result["tremor_energy"]
-            if tremor_result["tremor_energy"] > session.peak_tremor:
-                session.peak_tremor = tremor_result["tremor_energy"]
+            session.peak_tremor = max(session.peak_tremor, tremor_result["tremor_energy"])
 
             await manager.send_json(call_id, {
                 "type": "tremor_update",
@@ -451,7 +446,7 @@ async def _stt_loop(call_id: str) -> None:
     read_n = cfg.sample_rate // 2
 
     # Track language for adaptive prompting
-    detected_lang_hint: Optional[str] = None
+    detected_lang_hint: str | None = None
     full_transcript = ""
 
     logger.debug("stt_loop started: call_id=%r", call_id)

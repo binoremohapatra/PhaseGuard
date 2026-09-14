@@ -16,7 +16,7 @@ import asyncio
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import WebSocket
 
@@ -34,11 +34,11 @@ class CallState(str, Enum):
 
 @dataclass
 class EscalationRecord:
-    drafted_at: Optional[str] = None
-    confirmed_at: Optional[str] = None
-    destination: Optional[str] = None
-    delivery_status: Optional[str] = None
-    payload_summary: Optional[str] = None
+    drafted_at: str | None = None
+    confirmed_at: str | None = None
+    destination: str | None = None
+    delivery_status: str | None = None
+    payload_summary: str | None = None
 
 
 @dataclass
@@ -48,14 +48,14 @@ class CallSession:
 
     # Audio pipeline
     buffer: AudioBufferManager = field(default_factory=AudioBufferManager)
-    websocket: Optional[WebSocket] = None
+    websocket: WebSocket | None = None
 
     # Per-call asyncio background tasks
-    bispectrum_task: Optional[asyncio.Task] = None
-    tremor_task: Optional[asyncio.Task] = None
-    stt_task: Optional[asyncio.Task] = None
-    evidence_task: Optional[asyncio.Task] = None   # video evidence capture loop
-    scambaiter_task: Optional[asyncio.Task] = None # dedicated scambaiter audio loop
+    bispectrum_task: asyncio.Task | None = None
+    tremor_task: asyncio.Task | None = None
+    stt_task: asyncio.Task | None = None
+    evidence_task: asyncio.Task | None = None   # video evidence capture loop
+    scambaiter_task: asyncio.Task | None = None # dedicated scambaiter audio loop
     scambaiter_queue: asyncio.Queue = field(default_factory=asyncio.Queue) # queue for caller transcripts
 
     # Latest DSP results (for dossier)
@@ -66,26 +66,26 @@ class CallSession:
     latest_ensemble_label: str = "UNCERTAIN"
 
     # Fact-check results
-    factcheck_history: List[Dict[str, Any]] = field(default_factory=list)
+    factcheck_history: list[dict[str, Any]] = field(default_factory=list)
 
     # Scambaiter exchange log
-    scambaiter_log: List[Dict[str, Any]] = field(default_factory=list)
+    scambaiter_log: list[dict[str, Any]] = field(default_factory=list)
 
     # Forensics
     recorded_audio_bytes: bytes = b""       # accumulated raw PCM for hashing
-    transcript_history: List[str] = field(default_factory=list)
-    extracted_identifiers: Optional[Dict[str, Any]] = None
-    video_frames: List[Dict[str, Any]] = field(default_factory=list)
-    video_frames_buffer: List[Dict[str, Any]] = field(default_factory=list)
+    transcript_history: list[str] = field(default_factory=list)
+    extracted_identifiers: dict[str, Any] | None = None
+    video_frames: list[dict[str, Any]] = field(default_factory=list)
+    video_frames_buffer: list[dict[str, Any]] = field(default_factory=list)
 
     # Escalation chain-of-custody
-    escalation_records: List[EscalationRecord] = field(default_factory=list)
+    escalation_records: list[EscalationRecord] = field(default_factory=list)
     escalation_drafted: bool = False
     escalation_confirmed: bool = False
 
     # Ingestion source info
     ingestion_mode: str = "browser_mic"
-    caller_number: Optional[str] = None
+    caller_number: str | None = None
 
     # Operational mode — "full" (all services up) or "limited" (offline fallback active)
     # Set by accessibility/offline_fallback.py when LLM/network APIs consistently fail.
@@ -100,11 +100,11 @@ class ConnectionManager:
     """
 
     def __init__(self) -> None:
-        self._sessions: Dict[str, CallSession] = {}
+        self._sessions: dict[str, CallSession] = {}
 
     # ── Session lifecycle ──────────────────────────────────────────────────────
 
-    def create_session(self, call_id: str, ingestion_mode: str = "browser_mic", caller_number: Optional[str] = None) -> CallSession:
+    def create_session(self, call_id: str, ingestion_mode: str = "browser_mic", caller_number: str | None = None) -> CallSession:
         """Create and register a new CallSession."""
         if call_id in self._sessions:
             logger.warning("Session %r already exists — returning existing", call_id)
@@ -121,7 +121,7 @@ class ConnectionManager:
         logger.info("Session created: call_id=%r mode=%r", call_id, ingestion_mode)
         return session
 
-    def get_session(self, call_id: str) -> Optional[CallSession]:
+    def get_session(self, call_id: str) -> CallSession | None:
         return self._sessions.get(call_id)
 
     def require_session(self, call_id: str) -> CallSession:
@@ -148,7 +148,7 @@ class ConnectionManager:
         session.state = CallState.ENDED
 
         for task_attr in ("bispectrum_task", "tremor_task", "stt_task", "evidence_task", "scambaiter_task"):
-            task: Optional[asyncio.Task] = getattr(session, task_attr, None)
+            task: asyncio.Task | None = getattr(session, task_attr, None)
             if task and not task.done():
                 task.cancel()
                 try:
@@ -204,7 +204,7 @@ class ConnectionManager:
 
     # ── Diagnostics ───────────────────────────────────────────────────────────
 
-    def active_calls(self) -> List[str]:
+    def active_calls(self) -> list[str]:
         return [k for k, v in self._sessions.items() if v.state != CallState.ENDED]
 
 
