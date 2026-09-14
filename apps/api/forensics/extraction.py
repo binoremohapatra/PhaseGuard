@@ -21,11 +21,10 @@ that regex missed. This gives a reliable baseline that the LLM supplements.
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -38,13 +37,13 @@ _IFSC_PATTERN = re.compile(r"\b[A-Z]{4}0[A-Z0-9]{6}\b")  # IFSC code
 
 
 class ExtractedIdentifiers(TypedDict):
-    upi_ids: List[str]
-    phone_numbers: List[str]
-    bank_accounts: List[str]
-    ifsc_codes: List[str]
-    urls: List[str]
-    impersonated_entities: List[str]
-    caller_claimed_names: List[str]
+    upi_ids: list[str]
+    phone_numbers: list[str]
+    bank_accounts: list[str]
+    ifsc_codes: list[str]
+    urls: list[str]
+    impersonated_entities: list[str]
+    caller_claimed_names: list[str]
     additional_notes: str
 
 
@@ -79,7 +78,7 @@ Extract forensic identifiers as JSON:
 }}"""
 
 
-def _regex_extract(transcript: str) -> Dict[str, List[str]]:
+def _regex_extract(transcript: str) -> dict[str, list[str]]:
     """Run all deterministic regex patterns on the transcript."""
     return {
         "upi_ids": list(set(_UPI_PATTERN.findall(transcript))),
@@ -91,8 +90,8 @@ def _regex_extract(transcript: str) -> Dict[str, List[str]]:
 
 
 def _merge_identifiers(
-    regex_result: Dict[str, List[str]],
-    llm_result: Dict[str, Any],
+    regex_result: dict[str, list[str]],
+    llm_result: dict[str, Any],
 ) -> ExtractedIdentifiers:
     """Merge regex and LLM results, deduplicating each field."""
     return ExtractedIdentifiers(

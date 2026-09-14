@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Dict
 
 import numpy as np
 
@@ -53,7 +52,7 @@ class AudioBufferManager:
         self._write_head: int = 0
 
         # cursors[name] = absolute read position for that consumer.
-        self._cursors: Dict[str, int] = {}
+        self._cursors: dict[str, int] = {}
 
         self._lock = threading.Lock()
 

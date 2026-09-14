@@ -68,9 +68,8 @@ import asyncio
 import json
 import logging
 import re
-import time
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple, TypedDict
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +140,7 @@ class ScamCategory(str, Enum):
 
 
 # Human-readable descriptions used in the LLM system prompt
-_CATEGORY_DESCRIPTIONS: Dict[str, str] = {
+_CATEGORY_DESCRIPTIONS: dict[str, str] = {
     ScamCategory.UPI_COLLECT_FRAUD: (
         "[IN] Caller sends a UPI collect/QR code request and asks victim to enter UPI PIN "
         "or OTP to 'receive' or 'release' money. UPI PIN is NEVER needed to receive money."
@@ -324,14 +323,14 @@ _CATEGORY_DESCRIPTIONS: Dict[str, str] = {
 
 class ExtractedClaim(TypedDict):
     category: str                          # ScamCategory value
-    entities_claimed: List[str]            # e.g. ["CBI officer", "IRS"]
-    demands: List[str]                     # e.g. ["wire transfer", "gift card", "OTP"]
-    claimed_authority: Optional[str]       # e.g. "FBI", "Microsoft"
-    upi_ids_mentioned: List[str]
-    phone_numbers_mentioned: List[str]
+    entities_claimed: list[str]            # e.g. ["CBI officer", "IRS"]
+    demands: list[str]                     # e.g. ["wire transfer", "gift card", "OTP"]
+    claimed_authority: str | None       # e.g. "FBI", "Microsoft"
+    upi_ids_mentioned: list[str]
+    phone_numbers_mentioned: list[str]
     confidence: float                      # 0–1 LLM confidence
     hardcoded_critical: bool               # True if deterministic rule fired
-    hardcoded_category: Optional[str]      # Category hint from hardcoded rule, if fired
+    hardcoded_category: str | None      # Category hint from hardcoded rule, if fired
 
 
 # ── Deterministic Instant-CRITICAL pattern groups ─────────────────────────────
@@ -347,7 +346,7 @@ class ExtractedClaim(TypedDict):
 #   are things no legitimate caller would ever say.
 # - For sensitive categories (SEXTORTION, FAMILY_EMERGENCY), detect and flag only.
 
-_INSTANT_CRITICAL_PATTERNS: Dict[str, Tuple[str, List[re.Pattern]]] = {
+_INSTANT_CRITICAL_PATTERNS: dict[str, tuple[str, list[re.Pattern]]] = {
 
     # ── 0. High-Priority Demographic / Specific India Scams (Must run first) ──
     "PENSION_PF_SCAM": (ScamCategory.PENSION_PF_SCAM.value, [
@@ -633,7 +632,7 @@ _UPI_ID_PATTERN  = re.compile(r"[\w.\-]{2,256}@[\w]{2,64}", re.IGNORECASE)
 _PHONE_PATTERN   = re.compile(r"(?:\+91[\s\-]?)?[6-9]\d{9}")
 
 
-def _check_instant_critical(transcript: str) -> Tuple[bool, Optional[str]]:
+def _check_instant_critical(transcript: str) -> tuple[bool, str | None]:
     """
     Deterministic check against all instant-CRITICAL pattern groups.
 
@@ -657,11 +656,11 @@ def _check_instant_critical(transcript: str) -> Tuple[bool, Optional[str]]:
     return False, None
 
 
-def _extract_upi_ids(text: str) -> List[str]:
+def _extract_upi_ids(text: str) -> list[str]:
     return list(set(_UPI_ID_PATTERN.findall(text)))
 
 
-def _extract_phone_numbers(text: str) -> List[str]:
+def _extract_phone_numbers(text: str) -> list[str]:
     return list(set(_PHONE_PATTERN.findall(text)))
 
 
@@ -729,7 +728,7 @@ class ClaimExtractor:
         self._pending_transcript = ""
         return text
 
-    async def extract(self, transcript_window: str, full_transcript: str = "", call_id: str = "") -> Optional[ExtractedClaim]:
+    async def extract(self, transcript_window: str, full_transcript: str = "", call_id: str = "") -> ExtractedClaim | None:
         """
         Run claim extraction on a transcript window.
 
@@ -781,7 +780,7 @@ class ClaimExtractor:
             )
 
         # Step 4: LLM extraction
-        from groq import AsyncGroq, RateLimitError, AuthenticationError
+        from groq import AsyncGroq, AuthenticationError, RateLimitError
 
         client = AsyncGroq(api_key=cfg.groq_api_key)
         user_prompt = _USER_PROMPT_TEMPLATE.format(wrapped_transcript=wrapped_transcript)

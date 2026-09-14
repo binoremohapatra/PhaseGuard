@@ -9,20 +9,21 @@ Design:
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
+import os
 import re
-from typing import Dict, Any, Tuple
+from typing import Any
 
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
+from core.config import get_settings
 from factcheck.claim_extraction import ClaimExtractor
-from factcheck.verdict import generate_verdict
 from factcheck.search import SearchVerifier
+from factcheck.verdict import generate_verdict
 from intel.number_reputation import report_number
 from security.rate_limit import LIMIT_API, limiter
-import hmac
-import hashlib
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +34,7 @@ URL_PATTERN = re.compile(r'https?://[^\s]+')
 SUSPICIOUS_TLDS = ['.xyz', '.top', '.club', '.online', '.site']
 SHORTENERS = ['bit.ly', 'tinyurl.com', 't.co', 'goo.gl', 'ow.ly']
 
-def check_link_safety(text: str) -> Tuple[bool, str]:
+def check_link_safety(text: str) -> tuple[bool, str]:
     """Check if text contains suspicious links."""
     urls = URL_PATTERN.findall(text)
     for url in urls:
@@ -47,7 +48,7 @@ def check_link_safety(text: str) -> Tuple[bool, str]:
 
 @router.post("/webhook")
 @limiter.limit(LIMIT_API)
-async def whatsapp_webhook(request: Request) -> Dict[str, Any]:
+async def whatsapp_webhook(request: Request) -> dict[str, Any]:
     """
     Webhook for WhatsApp Business API.
     Expects incoming message events.
@@ -60,7 +61,8 @@ async def whatsapp_webhook(request: Request) -> Dict[str, Any]:
     body_bytes = await request.body()
     
     # HMAC verification against APP_SECRET
-    app_secret = os.getenv("WHATSAPP_APP_SECRET")
+    cfg = get_settings()
+    app_secret = cfg.whatsapp_app_secret
     if not app_secret:
         logger.error("WHATSAPP_APP_SECRET not configured in environment")
         raise HTTPException(status_code=500, detail="Server misconfiguration")
@@ -148,6 +150,9 @@ async def whatsapp_webhook(request: Request) -> Dict[str, Any]:
 
         return {"status": "success", "verdict": verdict['status'], "reply": reply_text}
 
+    except (KeyError, AttributeError) as exc:
+        logger.error("WhatsApp webhook processing error: %s", exc)
+        raise HTTPException(status_code=500, detail="Webhook processing failed")
     except Exception as exc:
         logger.error("WhatsApp webhook failed: %s", exc)
         raise HTTPException(status_code=500, detail="Webhook processing failed")

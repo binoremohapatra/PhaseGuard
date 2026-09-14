@@ -1,21 +1,21 @@
 from dotenv import load_dotenv; load_dotenv(r'd:\PhaseGuard\apps\api\.env')
 import asyncio
+import json
 import os
 import sys
 import uuid
-import json
-import httpx
 from datetime import datetime
+
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from main import app
 from core.connection_manager import manager
 from factcheck.claim_extraction import ClaimExtractor
 from factcheck.search import SearchVerifier
 from factcheck.verdict import generate_verdict
-from intel.number_reputation import report_number, get_reputation
+from intel.number_reputation import get_reputation, report_number
+from main import app
 
 client = TestClient(app)
 
@@ -73,7 +73,7 @@ async def run_tests():
         verdict["ts"] = datetime.utcnow().isoformat() + "Z"
         session.factcheck_history.append(verdict)
     except Exception as e:
-        print(f"{'TEST 1':<10} | {'Fact-Checker hero flow':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 1':<10} | {'Fact-Checker hero flow':<30} | {'FAIL':<10} | Error: {e!s}")
 
     # TEST 2 - Scambaiter
     try:
@@ -87,14 +87,13 @@ async def run_tests():
         else:
             print(f"{'TEST 2':<10} | {'Scambaiter':<30} | {'FAIL':<10} | HTTP {res.status_code}: {res.text}")
     except Exception as e:
-        print(f"{'TEST 2':<10} | {'Scambaiter':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 2':<10} | {'Scambaiter':<30} | {'FAIL':<10} | Error: {e!s}")
 
     # TEST 3 - Screen Capture (Timing-Mismatch Robustness)
     # Scenario: Scammer says "I'm from RBI" (CRITICAL verdict), THEN shares screen.
     # The evidence_capture_loop must pick up the frame even though it arrived AFTER
     # the verdict — simulating the real live-demo timing gap we had before the fix.
     try:
-        import asyncio as _asyncio
 
         # Step 1: Pre-seed a CRITICAL verdict in factcheck_history
         # (simulates the scam-word being detected by the STT pipeline)
@@ -106,7 +105,7 @@ async def run_tests():
             "ts": datetime.utcnow().isoformat(),
         }
         session.factcheck_history.append(scam_verdict)
-        print(f"  [T+0ms]  CRITICAL verdict injected -- scammer said 'share your UPI PIN'")
+        print("  [T+0ms]  CRITICAL verdict injected -- scammer said 'share your UPI PIN'")
 
         # Step 2: Upload frame AFTER verdict (timing mismatch — screen-share starts late)
         # In production this gap can be 500ms–3s while STT pipeline is still mid-flight.
@@ -169,7 +168,7 @@ async def run_tests():
         print(f"{'TEST 3':<10} | {'Screen-capture timing mismatch':<30} | {'PASS':<10} | {evidence}")
     except Exception as e:
         import traceback
-        print(f"{'TEST 3':<10} | {'Screen-capture timing mismatch':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 3':<10} | {'Screen-capture timing mismatch':<30} | {'FAIL':<10} | Error: {e!s}")
         traceback.print_exc()
 
     # TEST 4 - Forensic Dossier (Real Content Verification)
@@ -260,7 +259,9 @@ async def run_tests():
                 # pdfplumber not installed.
                 # ReportLab PDFs use /ASCII85Decode + /FlateDecode compression.
                 # Decode all content streams using Python stdlib only.
-                import zlib as _zlib, base64 as _b64, re as _re
+                import base64 as _b64
+                import re as _re
+                import zlib as _zlib
 
                 def _decode_pdf_streams(pdf_data: bytes) -> str:
                     """Decode ASCII85+FlateDecode content streams from a ReportLab PDF."""
@@ -363,14 +364,13 @@ async def run_tests():
 
     except Exception as e:
         import traceback
-        print(f"{'TEST 4':<10} | {'Forensic Dossier':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 4':<10} | {'Forensic Dossier':<30} | {'FAIL':<10} | Error: {e!s}")
         traceback.print_exc()
 
 
     # TEST 5 - Human-Confirmed Escalation (Detailed Breakdown)
     # Verifies: draft payload contents, confirm dispatch result, chain-of-custody record
     try:
-        import json as _json
 
         # Step A: Draft
         draft_res = client.post(f"/call/{call_id}/escalate/draft", headers=headers, json={})
@@ -412,7 +412,7 @@ async def run_tests():
                 dispatched_at   = confirm_data.get("dispatched_at", "")
                 error_msg       = confirm_data.get("error", None)
 
-                print(f"           Step B: Confirm OK")
+                print("           Step B: Confirm OK")
                 print(f"           success        : {success}")
                 print(f"           delivery_status: {delivery_status!r}")
                 print(f"           dispatched_at  : {dispatched_at}")
@@ -424,14 +424,14 @@ async def run_tests():
                 esc_records = session_now.escalation_records if session_now else []
                 if esc_records:
                     rec = esc_records[-1]
-                    print(f"           Chain-of-Custody record appended:")
+                    print("           Chain-of-Custody record appended:")
                     print(f"             drafted_at    : {rec.drafted_at}")
                     print(f"             confirmed_at  : {rec.confirmed_at}")
                     print(f"             destination   : {rec.destination!r}")
                     print(f"             delivery_status: {rec.delivery_status!r}")
                     print(f"             payload_summary: {rec.payload_summary!r}")
                 else:
-                    print(f"           Chain-of-custody: NO record appended (check send_bridge)")
+                    print("           Chain-of-custody: NO record appended (check send_bridge)")
 
                 # PASS/FAIL decision
                 # These delivery statuses are all expected/correct in test env:
@@ -458,7 +458,7 @@ async def run_tests():
 
     except Exception as e:
         import traceback
-        print(f"{'TEST 5':<10} | {'Human-Confirmed Escalation':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 5':<10} | {'Human-Confirmed Escalation':<30} | {'FAIL':<10} | Error: {e!s}")
         traceback.print_exc()
 
     # TEST 6 - WhatsApp Scanner (Detailed Breakdown)
@@ -482,7 +482,7 @@ async def run_tests():
 
         print(f"{'TEST 6':<10} | {'WhatsApp Scanner':<30} | {'...':<10} | Sending message to webhook")
         print(f"           Message text   : {wa_message_text!r}")
-        print(f"           Sender phone   : 919876543210")
+        print("           Sender phone   : 919876543210")
 
         res = client.post("/whatsapp/webhook", json=payload)
 
@@ -496,7 +496,7 @@ async def run_tests():
 
             print(f"           Pipeline status: {wa_status!r}")
             print(f"           Verdict        : {wa_verdict!r}")
-            print(f"           Reply text      :")
+            print("           Reply text      :")
             for line in wa_reply.strip().splitlines():
                 # Strip non-cp1252 chars for Windows console (⚠ etc.)
                 safe_line = line.encode("cp1252", errors="replace").decode("cp1252")
@@ -515,7 +515,7 @@ async def run_tests():
 
     except Exception as e:
         import traceback
-        print(f"{'TEST 6':<10} | {'WhatsApp Scanner':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 6':<10} | {'WhatsApp Scanner':<30} | {'FAIL':<10} | Error: {e!s}")
         traceback.print_exc()
 
     # TEST 7 - Offline Fallback
@@ -526,12 +526,12 @@ async def run_tests():
         await handle_network_failure(call_id, manager)
         session = manager.get_session(call_id)
         if session and session.mode == 'limited':
-            evidence = f"Offline fallback triggered, mode set to limited."
+            evidence = "Offline fallback triggered, mode set to limited."
             print(f"{'TEST 7':<10} | {'Offline Fallback':<30} | {'PASS':<10} | {evidence}")
         else:
             print(f"{'TEST 7':<10} | {'Offline Fallback':<30} | {'FAIL':<10} | Verdict not critical")
     except Exception as e:
-        print(f"{'TEST 7':<10} | {'Offline Fallback':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 7':<10} | {'Offline Fallback':<30} | {'FAIL':<10} | Error: {e!s}")
 
     # TEST 8 - Caller Number Intelligence
     try:
@@ -543,7 +543,7 @@ async def run_tests():
         evidence = f"Initial reports: {rep_start.get('times_reported', 0)}, Final reports: {rep_end.get('times_reported', 0)}"
         print(f"{'TEST 8':<10} | {'Caller Number Intelligence':<30} | {'PASS':<10} | {evidence}")
     except Exception as e:
-        print(f"{'TEST 8':<10} | {'Caller Number Intelligence':<30} | {'FAIL':<10} | Error: {str(e)}")
+        print(f"{'TEST 8':<10} | {'Caller Number Intelligence':<30} | {'FAIL':<10} | Error: {e!s}")
         
 if __name__ == "__main__":
     asyncio.run(run_tests())

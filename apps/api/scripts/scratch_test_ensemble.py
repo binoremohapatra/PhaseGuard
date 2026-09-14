@@ -1,14 +1,16 @@
 import sys
 from pathlib import Path
+
 import numpy as np
-import soundfile as sf
 import scipy.signal
+import soundfile as sf
 
 sys.path.append(str(Path(r"D:\PhaseGuard\apps\api")))
 
-from dsp.phase_dispersion import compute_pdi
-from dsp.micro_tremor import compute_tremor_score
 from dsp.ensemble_score import compute_ensemble
+from dsp.micro_tremor import compute_tremor_score
+from dsp.phase_dispersion import compute_pdi
+
 
 def load_audio(path):
     sig, fs = sf.read(path)

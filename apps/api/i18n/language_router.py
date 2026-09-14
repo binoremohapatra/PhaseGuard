@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,7 @@ class LanguageDetectionResult(TypedDict):
     has_devanagari: bool          # True if Devanagari script found
     hinglish_confidence: float    # 0–1 estimate of Hinglish mixing
     recommended_llm_lang: str     # 'en' | 'hi' | 'hinglish'
-    stt_language_hint: Optional[str]  # Language hint for Whisper: 'hi', 'en', None
+    stt_language_hint: str | None  # Language hint for Whisper: 'hi', 'en', None
 
 
 def detect_language(text: str) -> LanguageDetectionResult:
@@ -75,7 +75,7 @@ def detect_language(text: str) -> LanguageDetectionResult:
     # langdetect for primary language
     detected_lang = "en"
     try:
-        from langdetect import detect, LangDetectException  # type: ignore[import]
+        from langdetect import detect  # type: ignore[import]
 
         detected_lang = detect(text) if len(text.strip()) > 20 else "en"
     except Exception:
@@ -144,7 +144,7 @@ def get_hinglish_system_prompt_addon() -> str:
 async def get_bhashini_transcription(
     audio_base64: str,
     source_language: str = "hi",
-) -> Optional[str]:
+) -> str | None:
     """
     Placeholder: Bhashini transcription is NOT WIRED in this build.
     Hindi/Hinglish is handled by Groq Whisper (native multilingual STT).

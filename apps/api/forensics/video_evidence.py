@@ -19,7 +19,7 @@ import hashlib
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any
 
 import cv2
 import numpy as np
@@ -32,7 +32,7 @@ CASCADE_PATH = os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_defa
 _face_cascade = cv2.CascadeClassifier(CASCADE_PATH)
 
 
-def process_test_frame(image_path: str, call_id: str) -> Optional[Dict[str, Any]]:
+def process_test_frame(image_path: str, call_id: str) -> dict[str, Any] | None:
     """
     Process a video frame (stubbed via a test image path).
     
@@ -58,7 +58,7 @@ def process_test_frame(image_path: str, call_id: str) -> Optional[Dict[str, Any]
         logger.error(f"Error processing video evidence frame from path: {e}", exc_info=True)
         return None
 
-def process_frame_bytes(image_bytes: bytes, call_id: str, local_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def process_frame_bytes(image_bytes: bytes, call_id: str, local_path: str | None = None) -> dict[str, Any] | None:
     """
     Process a video frame from raw bytes.
     

@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, TypedDict
+from typing import TypedDict
 
 import httpx
 
@@ -44,10 +44,10 @@ logger = logging.getLogger(__name__)
 
 class DispatchResult(TypedDict):
     success: bool
-    dispatched_at: Optional[str]
+    dispatched_at: str | None
     destination: str
     delivery_status: str
-    error: Optional[str]
+    error: str | None
 
 
 async def dispatch_escalation(
@@ -139,7 +139,6 @@ async def _dispatch_email(payload: EscalationPayload, dispatched_at: str) -> Dis
     """
     import os
     import smtplib
-    from email.mime.application import MIMEApplication
     from email.mime.image import MIMEImage
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText

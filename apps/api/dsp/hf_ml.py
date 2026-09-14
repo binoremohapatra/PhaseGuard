@@ -5,8 +5,9 @@ Uses a pre-trained Audio Classification model on HuggingFace to detect
 spoofed/AI-generated audio as a replacement for pure DSP.
 """
 import io
-import time
 import logging
+import time
+
 import httpx
 import numpy as np
 import scipy.io.wavfile
@@ -79,9 +80,9 @@ async def analyze_audio_hf(window: np.ndarray, fs: int = 16_000) -> dict:
                 
     # Fallback to DSP if HF fails
     logger.info("Falling back to local DSP ensemble for deepfake detection")
-    from dsp.phase_dispersion import compute_pdi
-    from dsp.micro_tremor import compute_tremor_score
     from dsp.ensemble_score import compute_ensemble
+    from dsp.micro_tremor import compute_tremor_score
+    from dsp.phase_dispersion import compute_pdi
     
     try:
         # compute PDI over 512-sample windows with 256-sample hop

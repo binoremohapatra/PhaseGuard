@@ -23,23 +23,28 @@ import logging
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
 
-from fastapi import Body, Depends, FastAPI, HTTPException, Request, Response, status, UploadFile, File
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-import io
-import logging
-
-from core.auth import create_call_token, require_call_token, verify_call_token_for_call
+from core.auth import create_call_token, verify_call_token_for_call
 from core.config import get_settings
 from core.connection_manager import CallState, manager
-from security.rate_limit import LIMIT_API, LIMIT_LLM, LIMIT_WS_UPGRADE, limiter
+from security.rate_limit import LIMIT_API, LIMIT_WS_UPGRADE, limiter
 from workers.executor import get_executor, shutdown_executor
 from ws.call_socket import router as ws_router
 
@@ -121,8 +126,8 @@ except ImportError:
 class CallInitRequest(BaseModel):
     """Body for POST /call/init"""
     ingestion_mode: str = "browser_mic"  # "browser_mic" | "exotel" | "twilio"
-    call_id: Optional[str] = None
-    caller_number: Optional[str] = None
+    call_id: str | None = None
+    caller_number: str | None = None
 
 class CallInitResponse(BaseModel):
     call_id: str
@@ -134,8 +139,8 @@ class ScambaitRequest(BaseModel):
     pass  # No body needed; call_id from path, token from header
 
 class EscalationDraftRequest(BaseModel):
-    destination_email: Optional[str] = None
-    webhook_url: Optional[str] = None
+    destination_email: str | None = None
+    webhook_url: str | None = None
     format: str = "webhook"  # "email" | "slack" | "discord" | "webhook"
 
 class EscalationConfirmRequest(BaseModel):
@@ -292,9 +297,10 @@ async def upload_video_frame(
         logger.error("Failed to decode uploaded image: %s", e)
         raise HTTPException(status_code=400, detail="Invalid image content or corruption detected.")
 
-    from workers.executor import get_executor
-    from forensics.video_evidence import process_frame_bytes
     import asyncio
+
+    from forensics.video_evidence import process_frame_bytes
+    from workers.executor import get_executor
 
     loop = asyncio.get_event_loop()
     frame_meta = await loop.run_in_executor(
@@ -473,8 +479,8 @@ async def draft_escalation(
     if not session.factcheck_history:
         logger.warning("Drafting report with empty factcheck_history")
 
-    from forensics.hashing import compute_audio_hash
     from escalation.drafter import draft_email_payload, draft_webhook_payload
+    from forensics.hashing import compute_audio_hash
 
     hash_result = compute_audio_hash(session.recorded_audio_bytes)
     verdict = session.factcheck_history[-1].get("status", "UNKNOWN") if session.factcheck_history else "UNKNOWN"

@@ -1,6 +1,8 @@
 import asyncio
+
 import httpx
 import websockets
+
 
 async def run_test():
     print("1. Starting Call Init...")
@@ -40,7 +42,7 @@ async def run_test():
                         print("Received WS Text:", response)
                     else:
                         print("\n=======================================================")
-                        print(f"SUCCESS! RECEIVED RAW BINARY AUDIO BYTES FROM SCAMBAITER!")
+                        print("SUCCESS! RECEIVED RAW BINARY AUDIO BYTES FROM SCAMBAITER!")
                         print(f"Payload Size: {len(response)} bytes")
                         print("=======================================================\n")
                         

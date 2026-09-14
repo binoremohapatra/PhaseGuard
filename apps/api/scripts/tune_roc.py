@@ -1,5 +1,7 @@
 import json
+
 import numpy as np
+
 
 def sigmoid(x, k, x0):
     return 1.0 / (1.0 + np.exp(-k * (x - x0)))
@@ -49,7 +51,7 @@ def main():
     premium_ai = ["ElevenLabs_2026-09-01T15_58_06_Kanika - Warm, Expressive and Natural_pvc_sp100_s50_sb75_se0_m2.mp3", "hindi_ai_voice.mp3"]
     crude_ai = ["scam_bank_fraud.mp3", "scam_irs.mp3", "scam_kidnapping.mp3", "scam_tech_support.mp3", "new_ai_voice.mp3"]
     noisy_human = ["originalvo-medieval-gamer-voice-darkness-hunts-us-what-youx27ve-learned-stay-226596.mp3"]
-    clean_human = [f for f in files.keys() if f not in premium_ai and f not in crude_ai and f not in noisy_human]
+    clean_human = [f for f in files if f not in premium_ai and f not in crude_ai and f not in noisy_human]
     
     # Evaluate optimal config
     w_pdi = 0.70
@@ -58,7 +60,7 @@ def main():
     tremor_x0 = 0.10
     safe_thresh = 0.20
     
-    print(f"--- Full Breakdown for Optimal Config ---")
+    print("--- Full Breakdown for Optimal Config ---")
     print(f"W_PDI={w_pdi}, W_TREMOR={w_rest}, W_FORMANT={w_rest}")
     print(f"PDI_X0={pdi_x0}, TREMOR_X0={tremor_x0}, SAFE_THRESH={safe_thresh}\n")
     

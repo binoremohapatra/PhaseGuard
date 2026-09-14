@@ -12,7 +12,7 @@ Design:
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any
+from typing import Any
 
 logger = logging.getLogger(__name__)
 

@@ -37,7 +37,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import quote_plus
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ _MCA_ALT_BASE = (
 
 # ── WHOIS domain age ──────────────────────────────────────────────────────────
 
-def _check_domain_age(domain: str) -> tuple[Optional[int], Optional[str]]:
+def _check_domain_age(domain: str) -> tuple[int | None, str | None]:
     """
     Look up WHOIS data for a domain and return (age_days, flag).
     Returns (None, None) if WHOIS data is unavailable or privacy-shielded.
@@ -123,8 +123,8 @@ def _build_mca_search_url(name: str) -> str:
 
 async def _check_presence_split(
     name: str,
-    context_terms: Optional[str] = None,
-) -> tuple[bool, bool, List[str]]:
+    context_terms: str | None = None,
+) -> tuple[bool, bool, list[str]]:
     """
     Runs TWO separate searches for the entity:
       1. Scam/fraud reports:  '{name} {context_terms} scam OR fraud reported India'
@@ -181,7 +181,7 @@ async def _check_presence_split(
         policy_found = policy_res
 
 
-    sources: List[str] = []
+    sources: list[str] = []
     if scam_found:
         sources.append("scam-reports search")
     if policy_found:
@@ -191,7 +191,7 @@ async def _check_presence_split(
 
 
 # Keep backward-compat thin wrapper used by other callers
-async def _check_public_presence(name: str, context_terms: Optional[str] = None) -> tuple[bool, List[str]]:
+async def _check_public_presence(name: str, context_terms: str | None = None) -> tuple[bool, list[str]]:
     scam_found, policy_found, sources = await _check_presence_split(name, context_terms)
     return (scam_found or policy_found), sources
 
@@ -201,10 +201,10 @@ async def _check_public_presence(name: str, context_terms: Optional[str] = None)
 
 async def verify_entity(
     name: str,
-    domain: Optional[str] = None,
-    sub_entity: Optional[str] = None,
-    context_terms: Optional[str] = None,
-) -> Dict[str, Any]:
+    domain: str | None = None,
+    sub_entity: str | None = None,
+    context_terms: str | None = None,
+) -> dict[str, Any]:
     """
     Produce a verification signal dossier for a claimed entity/company.
 
@@ -231,8 +231,8 @@ async def verify_entity(
     mca_url = _build_mca_search_url(name)
 
     # ── WHOIS domain age ──────────────────────────────────────────────────────
-    domain_age_days: Optional[int] = None
-    domain_flag: Optional[str]     = None
+    domain_age_days: int | None = None
+    domain_flag: str | None     = None
 
     if domain:
         # Strip scheme/path — WHOIS only needs the bare domain
@@ -250,18 +250,18 @@ async def verify_entity(
     parent_scam, parent_policy, presence_sources = await parent_task
     presence_found = parent_scam or parent_policy
 
-    sub_scam:   Optional[bool] = None
-    sub_policy: Optional[bool] = None
+    sub_scam:   bool | None = None
+    sub_policy: bool | None = None
     if sub_task:
         sub_scam, sub_policy, _ = await sub_task
 
     # ── Confidence note builder ───────────────────────────────────────────────
-    signals: List[str] = []
+    signals: list[str] = []
 
     if domain_flag:
         signals.append(f"Domain: {domain_flag}.")
 
-    def _fmt_split(scam: Optional[bool], policy: Optional[bool], label: str) -> str:
+    def _fmt_split(scam: bool | None, policy: bool | None, label: str) -> str:
         scam_str   = "scam/fraud reports: FOUND"       if scam   else "scam/fraud reports: none"
         policy_str = "official policy mentions: FOUND" if policy else "official policy mentions: none"
         return f"{label} -> {scam_str} | {policy_str}"
