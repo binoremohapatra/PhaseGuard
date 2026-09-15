@@ -150,7 +150,6 @@ class _ReportsListViewState extends State<_ReportsListView> {
                         style: const TextStyle(
                           fontSize: 11,
                           color: PgColors.mediumBlue,
-                          fontFamily: 'Courier',
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

@@ -25,15 +25,11 @@ class MainActivity : FlutterActivity() {
     private val BLUETOOTH_CHANNEL = "phaseguard/bluetooth_sco"
     
     private var mediaProjectionManager: MediaProjectionManager? = null
-    private var mediaProjection: MediaProjection? = null
-    private var audioRecord: AudioRecord? = null
-    private var isCapturing = false
     private var sampleRate = 16000
     private var methodChannel: MethodChannel? = null
     private var bluetoothMethodChannel: MethodChannel? = null
     
-    private val audioBuffer = ByteBuffer.allocateDirect(4096)
-    private val handler = Handler(Looper.getMainLooper())
+    private var isCapturing = false
     
     private var bluetoothScoCapture: BluetoothScoCapture? = null
     private var shizukuAudioCapture: ShizukuAudioCapture? = null
@@ -80,6 +76,26 @@ class MainActivity : FlutterActivity() {
                 else -> {
                     result.notImplemented()
                 }
+            }
+        }
+        
+        ScreenCaptureService.onAudioDataListener = { data ->
+            runOnUiThread {
+                methodChannel?.invokeMethod("onAudioData", mapOf("data" to data.toList()))
+            }
+        }
+        
+        ScreenCaptureService.onCaptureErrorListener = { error ->
+            runOnUiThread {
+                methodChannel?.invokeMethod("onCaptureError", mapOf("error" to error))
+                isCapturing = false
+            }
+        }
+        
+        ScreenCaptureService.onCaptureStoppedListener = {
+            runOnUiThread {
+                methodChannel?.invokeMethod("onCaptureStopped", null)
+                isCapturing = false
             }
         }
         
@@ -154,107 +170,42 @@ class MainActivity : FlutterActivity() {
         super.onActivityResult(requestCode, resultCode, data)
         
         if (requestCode == SCREEN_CAPTURE_REQUEST_CODE) {
+            val result = pendingResult
+            pendingResult = null
+            
             if (resultCode == Activity.RESULT_OK && data != null) {
-                val result = pendingResult
-                pendingResult = null
-                
                 try {
-                    mediaProjection = mediaProjectionManager?.getMediaProjection(resultCode, data)
-                    
-                    if (mediaProjection != null) {
-                        startAudioCapture()
-                        result?.success(true)
-                    } else {
-                        result?.success(false)
+                    val intent = Intent(this, ScreenCaptureService::class.java).apply {
+                        putExtra("RESULT_CODE", resultCode)
+                        putExtra("DATA_INTENT", data)
+                        putExtra("SAMPLE_RATE", sampleRate)
                     }
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        startForegroundService(intent)
+                    } else {
+                        startService(intent)
+                    }
+                    
+                    isCapturing = true
+                    result?.success(true)
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error getting media projection: ${e.message}")
+                    Log.e(TAG, "Error starting ScreenCaptureService: ${e.message}")
                     result?.success(false)
                 }
             } else {
-                val result = pendingResult
-                pendingResult = null
                 result?.success(false)
-            }
-        }
-    }
-    
-    private fun startAudioCapture() {
-        try {
-            val audioSource = AudioManager.STREAM_MUSIC
-            val channelConfig = AudioFormat.CHANNEL_IN_MONO
-            val audioFormat = AudioFormat.ENCODING_PCM_16BIT
-            
-            val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat) * 2
-            
-            audioRecord = AudioRecord(
-                audioSource,
-                sampleRate,
-                channelConfig,
-                audioFormat,
-                bufferSize
-            )
-            
-            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
-                Log.e(TAG, "AudioRecord initialization failed")
-                methodChannel?.invokeMethod("onCaptureError", mapOf("error" to "AudioRecord initialization failed"))
-                return
-            }
-            
-            audioRecord?.startRecording()
-            isCapturing = true
-            
-            // Start audio capture thread
-            Thread {
-                captureAudio(bufferSize)
-            }.start()
-            
-            Log.i(TAG, "Audio capture started successfully")
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting audio capture: ${e.message}")
-            methodChannel?.invokeMethod("onCaptureError", mapOf("error" to e.message))
-            isCapturing = false
-        }
-    }
-    
-    private fun captureAudio(bufferSize: Int) {
-        val buffer = ByteArray(bufferSize)
-        
-        while (isCapturing) {
-            try {
-                val bytesRead = audioRecord?.read(buffer, 0, bufferSize) ?: 0
-                
-                if (bytesRead > 0) {
-                    // Send audio data to Flutter
-                    val audioData = buffer.copyOfRange(0, bytesRead)
-                    methodChannel?.invokeMethod("onAudioData", mapOf("data" to audioData.toList()))
-                }
-                
-                // Small delay to prevent CPU overload
-                Thread.sleep(10)
-                
-            } catch (e: Exception) {
-                Log.e(TAG, "Error capturing audio: ${e.message}")
-                break
             }
         }
     }
     
     private fun stopCapture(result: MethodChannel.Result) {
         try {
-            isCapturing = false
-            audioRecord?.stop()
-            audioRecord?.release()
-            audioRecord = null
-            mediaProjection?.stop()
-            mediaProjection = null
-            
-            methodChannel?.invokeMethod("onCaptureStopped", null)
+            val intent = Intent(this, ScreenCaptureService::class.java).apply {
+                action = "STOP"
+            }
+            startService(intent)
             result.success(true)
-            
-            Log.i(TAG, "Audio capture stopped")
-            
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping capture: ${e.message}")
             result.success(false)
