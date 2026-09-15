@@ -57,7 +57,6 @@ class _CallsListViewState extends State<_CallsListView> {
   bool _bluetoothScoEnabled = false;
   bool _bluetoothHeadsetConnected = false;
   bool _shizukuEnabled = false;
-  bool _shizukuInstalled = false;
   String _deviceInfo = 'Checking...';
   String _accessibilityStatus = 'Checking...';
   String _bluetoothStatus = 'Checking...';
@@ -164,18 +163,31 @@ class _CallsListViewState extends State<_CallsListView> {
   
   Future<void> _checkShizuku() async {
     try {
-      final info = await _shizukuCapture.getDeviceInfo();
+      await _shizukuCapture.getShizukuState();
       setState(() {
-        _shizukuInstalled = info['shizukuInstalled'] == true;
-        _shizukuStatus = _shizukuInstalled 
-            ? 'Installed (Experimental)'
-            : 'Not installed';
+        _shizukuStatus = _getShizukuStatusText(_shizukuCapture.currentState);
       });
     } catch (e) {
       setState(() {
-        _shizukuInstalled = false;
         _shizukuStatus = 'Error: $e';
       });
+    }
+  }
+  
+  String _getShizukuStatusText(ShizukuState state) {
+    switch (state) {
+      case ShizukuState.notInstalled:
+        return 'Shizuku not installed';
+      case ShizukuState.notRunning:
+        return 'Shizuku not running';
+      case ShizukuState.permissionNeeded:
+        return 'Permission required';
+      case ShizukuState.granted:
+        return 'Ready (Experimental)';
+      case ShizukuState.active:
+        return 'Capture active';
+      case ShizukuState.captureFailing:
+        return 'Capture failing (silent)';
     }
   }
   
@@ -221,15 +233,60 @@ class _CallsListViewState extends State<_CallsListView> {
   
   Future<void> _toggleShizuku() async {
     if (_shizukuEnabled) {
-      await _shizukuCapture.stopCapture();
+      // Stop capture
+      final result = await _shizukuCapture.stopElevatedCapture();
       setState(() {
         _shizukuEnabled = false;
+        _shizukuStatus = _getShizukuStatusText(_shizukuCapture.currentState);
       });
+      
+      // Show result message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Capture stopped'),
+            backgroundColor: _shizukuCapture.nonZeroPercentage < 1.0 
+                ? PgColors.crit 
+                : PgColors.safe,
+          ),
+        );
+      }
     } else {
-      final success = await _shizukuCapture.startCapture(sampleRate: 16000);
-      setState(() {
-        _shizukuEnabled = success;
-      });
+      // Request permission first if needed
+      if (_shizukuCapture.currentState == ShizukuState.permissionNeeded) {
+        final result = await _shizukuCapture.requestPermission();
+        setState(() {
+          _shizukuStatus = _getShizukuStatusText(_shizukuCapture.currentState);
+        });
+        
+        if (result['granted'] != true) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(result['message'] ?? 'Permission denied'),
+                backgroundColor: PgColors.crit,
+              ),
+            );
+          }
+          return;
+        }
+      }
+      
+      // Start elevated capture (requires MediaProjection permission)
+      // This would normally trigger a permission dialog
+      // For now, we'll show a message about the requirement
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Elevated capture requires MediaProjection permission. This is experimental and requires real device testing.'),
+            backgroundColor: PgColors.warn,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      
+      // For demo purposes, we won't actually start it without MediaProjection
+      // In production, this would trigger the permission flow
     }
   }
 
@@ -473,6 +530,10 @@ class _CallsListViewState extends State<_CallsListView> {
   }
   
   Widget _buildShizukuControl() {
+    final state = _shizukuCapture.currentState;
+    final canEnable = state == ShizukuState.granted;
+    final isFailing = state == ShizukuState.captureFailing;
+    
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +547,7 @@ class _CallsListViewState extends State<_CallsListView> {
                   Row(
                     children: [
                       Text(
-                        'Shizuku',
+                        'Shizuku Audio',
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -497,16 +558,21 @@ class _CallsListViewState extends State<_CallsListView> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: PgColors.dspAccent.withValues(alpha: 0.2),
-                          border: Border.all(color: PgColors.dspAccent, width: 1),
+                          color: isFailing 
+                              ? PgColors.crit.withValues(alpha: 0.2)
+                              : PgColors.dspAccent.withValues(alpha: 0.2),
+                          border: Border.all(
+                            color: isFailing ? PgColors.crit : PgColors.dspAccent,
+                            width: 1,
+                          ),
                           borderRadius: BorderRadius.circular(PgRadius.bar),
                         ),
-                        child: const Text(
-                          'EXPERIMENTAL',
+                        child: Text(
+                          isFailing ? 'FAILING' : 'EXPERIMENTAL',
                           style: TextStyle(
                             fontSize: 8,
                             fontWeight: FontWeight.w700,
-                            color: PgColors.dspAccent,
+                            color: isFailing ? PgColors.crit : PgColors.dspAccent,
                           ),
                         ),
                       ),
@@ -515,14 +581,24 @@ class _CallsListViewState extends State<_CallsListView> {
                   const SizedBox(height: 4),
                   Text(
                     _shizukuStatus,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: PgColors.mediumBlue,
+                      color: isFailing ? PgColors.crit : PgColors.mediumBlue,
                     ),
                   ),
+                  if (_shizukuCapture.isCapturing) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Non-zero: ${_shizukuCapture.nonZeroPercentage.toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: PgColors.lightBlue,
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              if (_shizukuInstalled)
+              if (canEnable)
                 Switch(
                   value: _shizukuEnabled,
                   onChanged: (value) => _toggleShizuku(),
@@ -533,11 +609,7 @@ class _CallsListViewState extends State<_CallsListView> {
           ),
           const SizedBox(height: 8),
           Text(
-            _shizukuInstalled 
-                ? (_shizukuEnabled 
-                    ? 'Advanced audio capture via Shizuku'
-                    : 'Enable for privileged audio access')
-                : 'Install Shizuku for advanced audio capture',
+            _getShizukuDescription(state),
             style: const TextStyle(
               fontSize: 11,
               color: PgColors.lightBlue,
@@ -546,6 +618,23 @@ class _CallsListViewState extends State<_CallsListView> {
         ],
       ),
     );
+  }
+  
+  String _getShizukuDescription(ShizukuState state) {
+    switch (state) {
+      case ShizukuState.notInstalled:
+        return 'Install Shizuku from F-Droid/GitHub, enable wireless debugging';
+      case ShizukuState.notRunning:
+        return 'Start Shizuku app and grant permission';
+      case ShizukuState.permissionNeeded:
+        return 'Tap switch to request Shizuku permission';
+      case ShizukuState.granted:
+        return 'REAL TEST REQUIRED: Test with actual phone call, not simulated';
+      case ShizukuState.active:
+        return 'Capture active. Verify audio output is real call audio, not silence';
+      case ShizukuState.captureFailing:
+        return 'FAILURE: Silent buffers detected. ROM blocks voice capture';
+    }
   }
 
   Widget _buildCallItem(CallRecord call) {

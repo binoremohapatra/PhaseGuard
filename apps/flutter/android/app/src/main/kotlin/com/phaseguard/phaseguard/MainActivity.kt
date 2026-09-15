@@ -123,18 +123,45 @@ class MainActivity : FlutterActivity() {
         val shizukuChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "phaseguard/shizuku_audio")
         shizukuChannel.setMethodCallHandler { call, result ->
             when (call.method) {
+                "getShizukuState" -> {
+                    shizukuAudioCapture?.getShizukuState(result)
+                }
                 "requestShizukuPermission" -> {
                     shizukuAudioCapture?.requestShizukuPermission(result)
                 }
-                "startShizukuCapture" -> {
-                    val requestedSampleRate = call.argument<Int>("sampleRate") ?: 16000
-                    shizukuAudioCapture?.startAudioCapture(requestedSampleRate, result)
+                "startElevatedCapture" -> {
+                    val resultCode = call.argument<Int>("resultCode") ?: Activity.RESULT_CANCELED
+                    val data = call.argument<Map<String, Any>>("data")
+                    val sampleRate = call.argument<Int>("sampleRate") ?: 16000
+                    
+                    if (data != null) {
+                        val intent = Intent().apply {
+                            data.forEach { (key, value) ->
+                                when (value) {
+                                    is String -> putExtra(key, value)
+                                    is Int -> putExtra(key, value)
+                                    is Boolean -> putExtra(key, value)
+                                }
+                            }
+                        }
+                        
+                        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+                        shizukuAudioCapture?.startElevatedCapture(
+                            mediaProjectionManager!!,
+                            resultCode,
+                            intent,
+                            sampleRate,
+                            result
+                        )
+                    } else {
+                        result.success(mapOf("success" to false, "message" to "No data provided"))
+                    }
                 }
-                "stopShizukuCapture" -> {
-                    shizukuAudioCapture?.stopAudioCapture(result)
+                "stopElevatedCapture" -> {
+                    shizukuAudioCapture?.stopElevatedCapture(result)
                 }
-                "getShizukuDeviceInfo" -> {
-                    shizukuAudioCapture?.getDeviceInfo(result)
+                "runSelfTest" -> {
+                    shizukuAudioCapture?.runSelfTest(result)
                 }
                 else -> {
                     result.notImplemented()
