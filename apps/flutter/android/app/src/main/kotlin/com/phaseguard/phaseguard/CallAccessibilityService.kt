@@ -6,6 +6,7 @@ import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
+import android.media.MediaRecorder
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -74,24 +75,28 @@ class CallAccessibilityService : AccessibilityService() {
         telephonyManager = getSystemService(TELEPHONY_SERVICE) as TelephonyManager
         
         // Listen for call state changes
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            telephonyManager?.registerTelephonyCallback(
-                mainExecutor,
-                object : TelephonyCallback(),
-                    TelephonyCallback.CallStateListener {
-                    override fun onCallStateChanged(state: Int) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                telephonyManager?.registerTelephonyCallback(
+                    mainExecutor,
+                    object : TelephonyCallback(),
+                        TelephonyCallback.CallStateListener {
+                        override fun onCallStateChanged(state: Int) {
+                            handleCallStateChange(state)
+                        }
+                    }
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                telephonyManager?.listen(object : PhoneStateListener() {
+                    override fun onCallStateChanged(state: Int, incomingNumber: String?) {
+                        phoneNumber = incomingNumber
                         handleCallStateChange(state)
                     }
-                }
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            telephonyManager?.listen(object : PhoneStateListener() {
-                override fun onCallStateChanged(state: Int, incomingNumber: String?) {
-                    phoneNumber = incomingNumber
-                    handleCallStateChange(state)
-                }
-            }, PhoneStateListener.LISTEN_CALL_STATE)
+                }, PhoneStateListener.LISTEN_CALL_STATE)
+            }
+        } catch (e: SecurityException) {
+            Log.e(TAG, "SecurityException: READ_PHONE_STATE permission might be missing - ${e.message}")
         }
     }
     
@@ -148,7 +153,7 @@ class CallAccessibilityService : AccessibilityService() {
         if (isCapturing) return
         
         try {
-            val audioSource = AudioManager.STREAM_MUSIC
+            val audioSource = MediaRecorder.AudioSource.VOICE_RECOGNITION
             val channelConfig = AudioFormat.CHANNEL_IN_MONO
             val audioFormat = AudioFormat.ENCODING_PCM_16BIT
             

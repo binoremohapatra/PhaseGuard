@@ -31,7 +31,7 @@ class ScreenAudioCapture {
       
       if (result == true) {
         _isCapturing = true;
-        _audioController ??= StreamController<Uint8List>();
+        _audioController ??= StreamController<List<int>>();
         _channel.setMethodCallHandler(_handleMethodCall);
         return true;
       }

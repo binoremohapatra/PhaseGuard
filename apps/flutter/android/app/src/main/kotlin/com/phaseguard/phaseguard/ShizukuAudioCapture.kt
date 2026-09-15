@@ -9,6 +9,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import io.flutter.plugin.common.MethodChannel
+import rikka.shizuku.Shizuku
 import kotlin.system.exitProcess
 
 /**
@@ -66,25 +67,15 @@ class ShizukuAudioCapture {
      */
     private fun checkShizukuAvailability() {
         try {
-            // Try to detect Shizuku by checking for the app
-            val packageManager = context?.packageManager
-            val shizukuPackage = "moe.shizuku.privileged.api"
-            
-            val installed = try {
-                packageManager?.getPackageInfo(shizukuPackage, 0)
-                true
-            } catch (e: Exception) {
-                false
-            }
-            
-            shizukuInstalled = installed == true
-            shizukuAvailable = installed == true && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            
-            Log.i(TAG, "Shizuku available: $shizukuAvailable, installed: $installed")
+            shizukuInstalled = Shizuku.pingBinder()
+            shizukuAvailable = shizukuInstalled && !Shizuku.isPreV11()
+            shizukuPermissionGranted = shizukuInstalled && Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED
+            Log.i(TAG, "Shizuku available: $shizukuAvailable, permission: $shizukuPermissionGranted")
         } catch (e: Exception) {
-            Log.e(TAG, "Error checking Shizuku availability: ${e.message}")
+            Log.e(TAG, "Shizuku check error: ${e.message}")
             shizukuAvailable = false
             shizukuInstalled = false
+            shizukuPermissionGranted = false
         }
     }
     
@@ -93,24 +84,34 @@ class ShizukuAudioCapture {
      * This requires user to grant permission via Shizuku app
      */
     fun requestShizukuPermission(result: MethodChannel.Result) {
+        checkShizukuAvailability()
         if (!shizukuInstalled) {
-            result.success(mapOf(
-                "granted" to false,
-                "installed" to false,
-                "message" to "Shizuku is not installed"
-            ))
+            result.success(mapOf("granted" to false, "installed" to false, "message" to "Shizuku not installed or active"))
+            return
+        }
+        if (Shizuku.checkSelfPermission() == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            shizukuPermissionGranted = true
+            result.success(mapOf("granted" to true, "installed" to true))
             return
         }
         
-        // In a real implementation, we would use Shizuku's API here
-        // For now, we'll simulate the check
-        // Real implementation would use: Shizuku.checkSelfPermission()
-        
-        result.success(mapOf(
-            "granted" to false,
-            "installed" to true,
-            "message" to "Shizuku permission requires manual grant in Shizuku app"
-        ))
+        val listener = object : Shizuku.OnRequestPermissionResultListener {
+            override fun onRequestPermissionResult(requestCode: Int, grantResult: Int) {
+                if (requestCode == 100) {
+                    val granted = grantResult == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    shizukuPermissionGranted = granted
+                    Shizuku.removeRequestPermissionResultListener(this)
+                    result.success(mapOf("granted" to granted, "installed" to true))
+                }
+            }
+        }
+        Shizuku.addRequestPermissionResultListener(listener)
+        try {
+            Shizuku.requestPermission(100)
+        } catch (e: Exception) {
+            Shizuku.removeRequestPermissionResultListener(listener)
+            result.success(mapOf("granted" to false, "installed" to true, "message" to e.message))
+        }
     }
     
     /**

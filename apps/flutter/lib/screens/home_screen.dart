@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../services/audio_capture_test.dart';
 import '../state/session_controller.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
@@ -207,11 +208,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 4),
                   Text(
                     session.callId?.substring(0, 12) ?? 'None',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    style: PgType.mono(
+                      size: 13,
+                      weight: FontWeight.w600,
                       color: PgColors.white,
-                      fontFamily: 'Courier',
                     ),
                   ),
                 ],
@@ -384,6 +384,20 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Continue Monitoring',
             icon: Icons.visibility,
             color: PgColors.accentBlue,
+          ),
+          const SizedBox(height: 8),
+          _buildActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AudioCaptureTestScreen(),
+                ),
+              );
+            },
+            label: 'Test Audio Capture',
+            icon: Icons.mic,
+            color: PgColors.warn,
           ),
         ],
         if (session.error != null) ...[
