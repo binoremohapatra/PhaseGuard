@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../services/audio_capture_test.dart';
+import '../services/call_socket.dart';
 import '../state/session_controller.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
@@ -15,6 +19,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final CallSocket _callSocket = CallSocket();
+  List<double> _audioLevels = List.filled(50, 0.0);
+  Timer? _audioTimer;
+  
   @override
   void initState() {
     super.initState();
@@ -23,6 +31,35 @@ class _HomeScreenState extends State<HomeScreen> {
       final session = context.read<SessionController>();
       if (session.callId == null && !session.connecting) {
         session.startSession();
+      }
+    });
+    
+    // Start audio level simulation for visualization
+    _startAudioVisualization();
+  }
+  
+  @override
+  void dispose() {
+    _audioTimer?.cancel();
+    _callSocket.disconnect();
+    super.dispose();
+  }
+  
+  void _startAudioVisualization() {
+    _audioTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
+      final session = context.read<SessionController>();
+      if (session.wsConnected && session.protectionActive) {
+        setState(() {
+          // Simulate audio levels (in real app, would come from actual audio data)
+          for (int i = 0; i < _audioLevels.length - 1; i++) {
+            _audioLevels[i] = _audioLevels[i + 1];
+          }
+          _audioLevels[_audioLevels.length - 1] = math.Random().nextDouble() * 0.8;
+        });
+      } else {
+        setState(() {
+          _audioLevels = List.filled(50, 0.0);
+        });
       }
     });
   }
@@ -51,7 +88,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: PgSpace.section),
                     _buildProtectionCard(session),
                     const SizedBox(height: PgSpace.section),
+                    _buildAudioVisualization(session),
+                    const SizedBox(height: PgSpace.section),
+                    _buildCaptureMethodInfo(session),
+                    const SizedBox(height: PgSpace.section),
                     _buildCallStatus(session),
+                    const SizedBox(height: PgSpace.section),
+                    if (session.wsConnected) _buildTranscriptWidget(session),
                     const SizedBox(height: PgSpace.section),
                     if (session.wsConnected) _buildFactCheckWidget(session),
                     const SizedBox(height: PgSpace.section),
@@ -113,15 +156,36 @@ class _HomeScreenState extends State<HomeScreen> {
       decoration: BoxDecoration(
         color: statusColor.withValues(alpha: 0.15),
         border: Border.all(color: statusColor, width: 1.5),
-        borderRadius: BorderRadius.circular(PgRadii.pill),
+        borderRadius: BorderRadius.circular(PgRadius.bar),
       ),
-      child: Text(
-        session.callStatusLabel,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: statusColor,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (session.connecting)
+            const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(PgColors.warn),
+              ),
+            )
+          else
+            Icon(
+              session.wsConnected ? Icons.wifi : Icons.offline_bolt,
+              size: 12,
+              color: statusColor,
+            ),
+          const SizedBox(width: 6),
+          Text(
+            session.callStatusLabel,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: statusColor,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -185,6 +249,250 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildAudioVisualization(SessionController session) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SectionTitle('Real-Time Audio'),
+              if (session.wsConnected && session.protectionActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: PgColors.safe.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(PgRadius.bar),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: PgColors.safe,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 60,
+            child: CustomPaint(
+              painter: _AudioWaveformPainter(_audioLevels),
+              size: const Size(double.infinity, 60),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                session.wsConnected ? 'Signal Active' : 'Signal Inactive',
+                style: TextStyle(
+                  fontSize: 11,
+                  color: session.wsConnected ? PgColors.safe : PgColors.mediumBlue,
+                ),
+              ),
+              Text(
+                'Sample Rate: 16kHz',
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: PgColors.mediumBlue,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTranscriptWidget(SessionController session) {
+    final tr = session.transcript;
+    if (tr == null) return const SizedBox.shrink();
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SectionTitle('Live Transcript'),
+              if (tr.confidence != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: PgColors.accentBlue.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(PgRadius.bar),
+                  ),
+                  child: Text(
+                    '${(tr.confidence! * 100).round()}%',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: PgColors.accentBlue,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            tr.text,
+            style: const TextStyle(
+              fontSize: 13,
+              color: PgColors.lightBlue,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (tr.language != null) ...[
+                Text(
+                  tr.language!,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: PgColors.mediumBlue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                tr.timestamp,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: PgColors.mediumBlue,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaptureMethodInfo(SessionController session) {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SectionTitle('Audio Capture Method'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: PgColors.warn.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(PgRadius.bar),
+                ),
+                child: const Text(
+                  'LIMITED',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: PgColors.warn,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Android does not allow direct call audio capture via public APIs.',
+            style: TextStyle(
+              fontSize: 12,
+              color: PgColors.lightBlue,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Available methods:',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: PgColors.white,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _buildCaptureMethodItem(
+            'Browser Mic',
+            'Captures room audio through microphone (recommended)',
+            PgColors.accentBlue,
+          ),
+          _buildCaptureMethodItem(
+            'Bluetooth SCO',
+            'Headset required, untested - needs real call verification',
+            PgColors.warn,
+          ),
+          _buildCaptureMethodItem(
+            'Shizuku',
+            'Experimental, ROM-dependent, requires real device testing',
+            PgColors.dspAccent,
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'MediaProjection/Accessibility Service cannot capture call audio directly.',
+            style: TextStyle(
+              fontSize: 10,
+              color: PgColors.mediumBlue,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCaptureMethodItem(String name, String description, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 4,
+            height: 4,
+            margin: const EdgeInsets.only(top: 6),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: '$name: ',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: PgColors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  TextSpan(
+                    text: description,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: PgColors.lightBlue,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCallStatus(SessionController session) {
     return GlassCard(
       child: Column(
@@ -224,7 +532,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: PgColors.accentBlue,
                     width: 1,
                   ),
-                  borderRadius: BorderRadius.circular(PgRadii.bar),
+                  borderRadius: BorderRadius.circular(PgRadius.bar),
                 ),
                 child: Text(
                   session.callTag,
@@ -314,11 +622,62 @@ class _HomeScreenState extends State<HomeScreen> {
     final fc = session.factcheck;
     if (fc == null) return const SizedBox.shrink();
 
+    Color statusColor;
+    IconData statusIcon;
+    switch (fc.status) {
+      case 'SAFE':
+        statusColor = PgColors.safe;
+        statusIcon = Icons.check_circle;
+        break;
+      case 'CRITICAL':
+        statusColor = PgColors.crit;
+        statusIcon = Icons.warning;
+        break;
+      case 'WARNING':
+      case 'UNCERTAIN':
+        statusColor = PgColors.warn;
+        statusIcon = Icons.error_outline;
+        break;
+      case 'VERIFYING':
+        statusColor = PgColors.accentBlue;
+        statusIcon = Icons.hourglass_empty;
+        break;
+      default:
+        statusColor = PgColors.mediumBlue;
+        statusIcon = Icons.info_outline;
+    }
+
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionTitle('Latest Fact Check'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const SectionTitle('Scam Detection'),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(PgRadius.bar),
+                ),
+                child: Row(
+                  children: [
+                    Icon(statusIcon, size: 14, color: statusColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      fc.status,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: statusColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 12),
           Text(
             fc.message,
@@ -328,14 +687,37 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 1.5,
             ),
           ),
+          if (fc.category != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: PgColors.glassBg,
+                borderRadius: BorderRadius.circular(PgRadius.bar),
+              ),
+              child: Text(
+                fc.category!,
+                style: const TextStyle(
+                  fontSize: 10,
+                  color: PgColors.mediumBlue,
+                ),
+              ),
+            ),
+          ],
           if (fc.evidenceUrls.isNotEmpty) ...[
             const SizedBox(height: 12),
-            Text(
-              'Evidence: ${fc.evidenceUrls.length} source(s)',
-              style: const TextStyle(
-                fontSize: 10,
-                color: PgColors.mediumBlue,
-              ),
+            Row(
+              children: [
+                const Icon(Icons.link, size: 12, color: PgColors.mediumBlue),
+                const SizedBox(width: 4),
+                Text(
+                  'Evidence: ${fc.evidenceUrls.length} source(s)',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: PgColors.mediumBlue,
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -356,14 +738,23 @@ class _HomeScreenState extends State<HomeScreen> {
                 : () {
                     session.startSession();
                   },
-            icon: const Icon(Icons.play_arrow),
+            icon: session.connecting 
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation(PgColors.white),
+                    ),
+                  )
+                : const Icon(Icons.play_arrow),
             label: Text(session.connecting ? 'Connecting...' : 'Start Session'),
             style: ElevatedButton.styleFrom(
               backgroundColor: PgColors.accentBlue,
               foregroundColor: PgColors.white,
               padding: const EdgeInsets.symmetric(vertical: 12),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderRadius: BorderRadius.circular(PgRadius.bar),
               ),
             ),
           )
@@ -407,14 +798,48 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               color: PgColors.crit.withValues(alpha: 0.1),
               border: Border.all(color: PgColors.crit, width: 1),
-              borderRadius: BorderRadius.circular(PgRadii.bar),
+              borderRadius: BorderRadius.circular(PgRadius.bar),
             ),
-            child: Text(
-              'Error: ${session.error}',
-              style: const TextStyle(
-                fontSize: 11,
-                color: PgColors.crit,
-              ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, size: 16, color: PgColors.crit),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    session.error!,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: PgColors.crit,
+                    ),
+                  ),
+                ),
+                if (session.wsConnected)
+                  TextButton(
+                    onPressed: () {
+                      session.clearError();
+                    },
+                    child: const Text(
+                      'Dismiss',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: PgColors.crit,
+                      ),
+                    ),
+                  ),
+                if (!session.wsConnected && !session.connecting)
+                  TextButton(
+                    onPressed: () {
+                      session.startSession();
+                    },
+                    child: const Text(
+                      'Reconnect',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: PgColors.crit,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ],
@@ -438,7 +863,7 @@ class _HomeScreenState extends State<HomeScreen> {
         side: BorderSide(color: color, width: 1.5),
         padding: const EdgeInsets.symmetric(vertical: 12),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(PgRadii.bar),
+          borderRadius: BorderRadius.circular(PgRadius.bar),
         ),
       ),
     );
@@ -494,5 +919,38 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+}
+
+class _AudioWaveformPainter extends CustomPainter {
+  final List<double> audioLevels;
+
+  _AudioWaveformPainter(this.audioLevels);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = PgColors.accentBlue
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+
+    final barWidth = size.width / audioLevels.length;
+    final baseline = size.height / 2;
+
+    for (int i = 0; i < audioLevels.length; i++) {
+      final level = audioLevels[i];
+      final barHeight = level * size.height * 0.8;
+      final x = i * barWidth;
+
+      final path = Path();
+      path.moveTo(x, baseline - barHeight / 2);
+      path.lineTo(x, baseline + barHeight / 2);
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_AudioWaveformPainter oldDelegate) {
+    return true;
   }
 }
