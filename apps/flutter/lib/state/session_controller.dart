@@ -19,8 +19,14 @@ class SessionController extends ChangeNotifier {
   String? callId;
   String? token;
 
+  void clearError() {
+    error = null;
+    notifyListeners();
+  }
+
   FactCheckUpdate? factcheck;
   EnsembleUpdate? ensemble;
+  TranscriptUpdate? transcript;
   bool dspEnabled = false;
   String? lastActionMessage;
 
@@ -185,8 +191,12 @@ class SessionController extends ChangeNotifier {
       case 'ensemble_update':
         ensemble = EnsembleUpdate.fromJson(json);
         break;
+      case 'transcript_update':
+        transcript = TranscriptUpdate.fromJson(json);
+        break;
       case 'error':
         error = json['message'] as String? ?? 'WebSocket error';
+        wsConnected = false;
         break;
       default:
         return;

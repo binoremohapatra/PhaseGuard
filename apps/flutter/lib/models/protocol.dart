@@ -100,6 +100,29 @@ class EscalationDraft {
   }
 }
 
+class TranscriptUpdate {
+  TranscriptUpdate({
+    required this.text,
+    required this.timestamp,
+    this.language,
+    this.confidence,
+  });
+
+  final String text;
+  final String timestamp;
+  final String? language;
+  final double? confidence;
+
+  factory TranscriptUpdate.fromJson(Map<String, dynamic> json) {
+    return TranscriptUpdate(
+      text: json['text'] as String? ?? '',
+      timestamp: json['timestamp'] as String? ?? '',
+      language: json['language'] as String?,
+      confidence: (json['confidence'] as num?)?.toDouble(),
+    );
+  }
+}
+
 class CallStatus {
   CallStatus({
     required this.callId,
