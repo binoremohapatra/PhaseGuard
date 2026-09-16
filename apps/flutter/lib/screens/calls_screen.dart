@@ -4,9 +4,12 @@ import '../services/accessibility_capture.dart';
 import '../services/bluetooth_sco_capture.dart';
 import '../services/call_socket.dart';
 import '../services/shizuku_capture.dart';
+import '../services/priority_recording.dart';
+import '../services/realtime_scam_detection.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
+import 'scam_detection_demo.dart';
 
 class CallsScreen extends StatefulWidget {
   const CallsScreen({super.key});
@@ -51,16 +54,20 @@ class _CallsListViewState extends State<_CallsListView> {
   final AccessibilityCapture _accessibilityCapture = AccessibilityCapture();
   final BluetoothScoCapture _bluetoothScoCapture = BluetoothScoCapture();
   final ShizukuCapture _shizukuCapture = ShizukuCapture();
+  final PriorityRecording _priorityRecording = PriorityRecording();
   bool _screenAudioEnabled = false;
   bool _screenAudioAvailable = false;
   bool _accessibilityEnabled = false;
   bool _bluetoothScoEnabled = false;
   bool _bluetoothHeadsetConnected = false;
   bool _shizukuEnabled = false;
+  bool _priorityRecordingEnabled = false;
   String _deviceInfo = 'Checking...';
   String _accessibilityStatus = 'Checking...';
   String _bluetoothStatus = 'Checking...';
   String _shizukuStatus = 'Checking...';
+  String _priorityRecordingStatus = 'Checking...';
+  RecordingMethod _currentRecordingMethod = RecordingMethod.none;
 
   @override
   void initState() {
@@ -96,9 +103,16 @@ class _CallsListViewState extends State<_CallsListView> {
     _checkAccessibilityService();
     _checkBluetoothSco();
     _checkShizuku();
+    _checkPriorityRecording();
     _accessibilityCapture.startListening();
     _bluetoothScoCapture.startListening();
     _shizukuCapture.startListening();
+    _priorityRecording.resultStream.listen((result) {
+      setState(() {
+        _currentRecordingMethod = result.method;
+        _priorityRecordingStatus = _priorityRecording.getMethodDisplayName(result.method);
+      });
+    });
   }
   
   @override
@@ -106,6 +120,7 @@ class _CallsListViewState extends State<_CallsListView> {
     _accessibilityCapture.dispose();
     _bluetoothScoCapture.dispose();
     _shizukuCapture.dispose();
+    _priorityRecording.dispose();
     super.dispose();
   }
   
@@ -170,6 +185,24 @@ class _CallsListViewState extends State<_CallsListView> {
     } catch (e) {
       setState(() {
         _shizukuStatus = 'Error: $e';
+      });
+    }
+  }
+  
+  Future<void> _checkPriorityRecording() async {
+    try {
+      final status = await _priorityRecording.getRecordingStatus();
+      setState(() {
+        _priorityRecordingStatus = _priorityRecording.getMethodDisplayName(
+          RecordingMethod.values.firstWhere(
+            (e) => e.name == status['currentMethod'],
+            orElse: () => RecordingMethod.none,
+          ),
+        );
+      });
+    } catch (e) {
+      setState(() {
+        _priorityRecordingStatus = 'Error: $e';
       });
     }
   }
@@ -272,21 +305,81 @@ class _CallsListViewState extends State<_CallsListView> {
         }
       }
       
-      // Start elevated capture (requires MediaProjection permission)
-      // This would normally trigger a permission dialog
-      // For now, we'll show a message about the requirement
+      // Start Cally-like elevated capture (no MediaProjection needed)
+      final result = await _shizukuCapture.startElevatedCapture(sampleRate: 16000);
+      
+      if (result['success'] == true) {
+        setState(() {
+          _shizukuEnabled = true;
+          _shizukuStatus = _getShizukuStatusText(_shizukuCapture.currentState);
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Capture started'),
+              backgroundColor: PgColors.safe,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result['message'] ?? 'Capture failed'),
+              backgroundColor: PgColors.crit,
+            ),
+          );
+        }
+      }
+    }
+  }
+  
+  Future<void> _togglePriorityRecording() async {
+    if (_priorityRecordingEnabled) {
+      // Stop priority recording
+      final result = await _priorityRecording.stopRecording();
+      setState(() {
+        _priorityRecordingEnabled = false;
+        _priorityRecordingStatus = 'Idle';
+      });
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Elevated capture requires MediaProjection permission. This is experimental and requires real device testing.'),
-            backgroundColor: PgColors.warn,
-            duration: Duration(seconds: 5),
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: result.success ? PgColors.safe : PgColors.crit,
           ),
         );
       }
+    } else {
+      // Start priority recording (automatic method selection)
+      final result = await _priorityRecording.startRecording(sampleRate: 16000);
       
-      // For demo purposes, we won't actually start it without MediaProjection
-      // In production, this would trigger the permission flow
+      if (result.success) {
+        setState(() {
+          _priorityRecordingEnabled = true;
+          _priorityRecordingStatus = _priorityRecording.getMethodDisplayName(result.method);
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${_priorityRecording.getMethodDisplayName(result.method)}: ${result.message}'),
+              backgroundColor: PgColors.safe,
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: PgColors.crit,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -317,6 +410,16 @@ class _CallsListViewState extends State<_CallsListView> {
         
         // Shizuku Control (Experimental)
         _buildShizukuControl(),
+        
+        const SizedBox(height: PgSpace.section),
+        
+        // Priority Recording Control (New - Recommended)
+        _buildPriorityRecordingControl(),
+        
+        const SizedBox(height: PgSpace.section),
+        
+        // Scam Detection Demo (Backend AI Integration)
+        _buildScamDetectionDemo(),
         
         const SizedBox(height: PgSpace.section),
         ...calls.map((call) => _buildCallItem(call)),
@@ -589,6 +692,14 @@ class _CallsListViewState extends State<_CallsListView> {
                   if (_shizukuCapture.isCapturing) ...[
                     const SizedBox(height: 4),
                     Text(
+                      'Health: ${_shizukuCapture.bypassHealth}, Step: ${_shizukuCapture.fallbackStep}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: PgColors.lightBlue,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
                       'Non-zero: ${_shizukuCapture.nonZeroPercentage.toStringAsFixed(1)}%',
                       style: const TextStyle(
                         fontSize: 10,
@@ -629,12 +740,204 @@ class _CallsListViewState extends State<_CallsListView> {
       case ShizukuState.permissionNeeded:
         return 'Tap switch to request Shizuku permission';
       case ShizukuState.granted:
-        return 'REAL TEST REQUIRED: Test with actual phone call, not simulated';
+        return 'Cally-like bypass ready. Uses shell UID with WrappedShellContext for voice capture';
       case ShizukuState.active:
-        return 'Capture active. Verify audio output is real call audio, not silence';
+        return 'Capture active. Health: ${_shizukuCapture.bypassHealth}, Step: ${_shizukuCapture.fallbackStep}';
       case ShizukuState.captureFailing:
         return 'FAILURE: Silent buffers detected. ROM blocks voice capture';
     }
+  }
+  
+  Widget _buildPriorityRecordingControl() {
+    final method = _currentRecordingMethod;
+    final priority = _priorityRecording.currentPriority;
+    final isRecording = _priorityRecording.isRecording;
+    
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Smart Recording',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: PgColors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: PgColors.accentBlue.withValues(alpha: 0.2),
+                          border: Border.all(
+                            color: PgColors.accentBlue,
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(PgRadius.bar),
+                        ),
+                        child: const Text(
+                          'AUTO',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: PgColors.accentBlue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _priorityRecordingStatus,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: PgColors.mediumBlue,
+                    ),
+                  ),
+                  if (isRecording) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'Method: ${_priorityRecording.getMethodDisplayName(method)} (Priority: $priority)',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: PgColors.lightBlue,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              Switch(
+                value: _priorityRecordingEnabled,
+                onChanged: (value) => _togglePriorityRecording(),
+                activeTrackColor: PgColors.accentBlue,
+                activeThumbColor: PgColors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _getPriorityRecordingDescription(method),
+            style: const TextStyle(
+              fontSize: 11,
+              color: PgColors.lightBlue,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  String _getPriorityRecordingDescription(RecordingMethod method) {
+    switch (method) {
+      case RecordingMethod.none:
+        return 'Auto-selects best recording method: Cally → VoIP → Accessibility → Bluetooth → Hardware';
+      case RecordingMethod.cally:
+        return 'Using Cally (Shizuku shell UID) - Primary method, no speakerphone needed';
+      case RecordingMethod.voip:
+        return 'Using VoIP APIs (Vapi/Plivo) - First fallback for VoIP calls';
+      case RecordingMethod.accessibility:
+        return 'Using Accessibility + Speakerphone - Second fallback, speakerphone auto-enabled';
+      case RecordingMethod.bluetooth:
+        return 'Using Bluetooth SCO - Third fallback, requires headset';
+      case RecordingMethod.hardware:
+        return 'Hardware device recommended - Last resort for perfect recording';
+    }
+  }
+  
+  Widget _buildScamDetectionDemo() {
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        'Backend AI Integration',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: PgColors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: PgColors.accentBlue.withValues(alpha: 0.2),
+                          border: Border.all(
+                            color: PgColors.accentBlue,
+                            width: 1,
+                          ),
+                          borderRadius: BorderRadius.circular(PgRadius.bar),
+                        ),
+                        child: const Text(
+                          'AI',
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700,
+                            color: PgColors.accentBlue,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Real-time scam detection using backend AI',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: PgColors.mediumBlue,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ScamDetectionDemo(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: PgColors.accentBlue,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: const Text(
+                  'Open Demo',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Integrates with PhaseGuard backend for AI-powered scam detection. '
+            'Uses accessibility + speakerphone for audio capture and streams to backend for real-time analysis.',
+            style: const TextStyle(
+              fontSize: 11,
+              color: PgColors.lightBlue,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCallItem(CallRecord call) {

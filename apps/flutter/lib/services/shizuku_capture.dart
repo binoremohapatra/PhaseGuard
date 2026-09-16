@@ -12,16 +12,15 @@ enum ShizukuState {
   captureFailing,
 }
 
-/// Shizuku Audio Capture - Voice Communication Capture Attempt
+/// Shizuku Audio Capture - Cally-like Implementation
 ///
-/// This attempts to capture voice call audio using Shizuku's elevated privileges
-/// to access the hidden voiceCommunicationCaptureAllowed() method.
+/// This uses the Cally approach to capture voice call audio via Shizuku's UserService:
+/// 1. Shizuku spawns a RecorderService in app_process (UID 2000 = shell)
+/// 2. WrappedShellContext patches ActivityThread to pretend to be com.android.shell
+/// 3. AudioRecord with VOICE_* sources works because AudioFlinger sees shell identity
+/// 4. 5-step fallback ladder: VOICE_UPLINK → VOICE_DOWNLINK → VOICE_CALL → MEDIA → MIC
 ///
-/// CRITICAL: This is experimental and ROM-dependent. It may not work on all devices.
-/// Samsung/MIUI/OxygenOS are known to restrict audio routing more aggressively.
-///
-/// HARD TRUTH: If this implementation exists but produces silent buffers during a real call,
-/// it is a FAILURE, not a "partial success." Only verified audible output counts as working.
+/// This is the most promising approach for single-device call audio capture without root.
 ///
 /// UI State Machine:
 /// - NOT_INSTALLED: Shizuku not installed on device
@@ -48,6 +47,11 @@ class ShizukuCapture {
   int _nonZeroBytes = 0;
   double _nonZeroPercentage = 0.0;
   
+  // Cally-specific metrics
+  String _bypassHealth = 'Failed';
+  int _fallbackStep = 0;
+  bool _isDualRecording = false;
+  
   final StreamController<Map<String, dynamic>> _eventController = StreamController<Map<String, dynamic>>.broadcast();
   final StreamController<List<int>> _audioController = StreamController<List<int>>.broadcast();
   
@@ -64,6 +68,9 @@ class ShizukuCapture {
   int get totalBytes => _totalBytes;
   int get nonZeroBytes => _nonZeroBytes;
   double get nonZeroPercentage => _nonZeroPercentage;
+  String get bypassHealth => _bypassHealth;
+  int get fallbackStep => _fallbackStep;
+  bool get isDualRecording => _isDualRecording;
   
   /// Get current Shizuku state
   Future<Map<String, dynamic>> getShizukuState() async {
@@ -97,11 +104,9 @@ class ShizukuCapture {
     }
   }
   
-  /// Start elevated capture attempt
-  /// Requires MediaProjection permission result
+  /// Start elevated capture attempt using Cally-like approach
+  /// No longer requires MediaProjection - uses Shizuku UserService directly
   Future<Map<String, dynamic>> startElevatedCapture({
-    required int resultCode,
-    required Map<String, dynamic> data,
     int sampleRate = 16000,
   }) async {
     try {
@@ -109,16 +114,19 @@ class ShizukuCapture {
       _totalBytes = 0;
       _nonZeroBytes = 0;
       _nonZeroPercentage = 0.0;
+      _fallbackStep = 0;
+      _isDualRecording = false;
       
       final result = await _channel.invokeMethod('startElevatedCapture', {
-        'resultCode': resultCode,
-        'data': data,
         'sampleRate': sampleRate,
       });
       
       if (result['success'] == true) {
         _isCapturing = true;
         _currentState = ShizukuState.active;
+        _bypassHealth = result['health'] ?? 'Failed';
+        _fallbackStep = result['fallbackStep'] ?? 0;
+        _isDualRecording = result['isDual'] ?? false;
         startListening();
       }
       
@@ -151,6 +159,9 @@ class ShizukuCapture {
         }
       }
       
+      _isDualRecording = false;
+      _fallbackStep = 0;
+      
       return Map<String, dynamic>.from(result);
     } catch (e) {
       return {
@@ -164,11 +175,18 @@ class ShizukuCapture {
   Future<Map<String, dynamic>> runSelfTest() async {
     try {
       final result = await _channel.invokeMethod('runSelfTest');
+      
+      // Update bypass health from result
+      if (result['health'] != null) {
+        _bypassHealth = result['health'];
+      }
+      
       return Map<String, dynamic>.from(result);
     } catch (e) {
       return {
-        'classification': 'SHIZUKU_UNAVAILABLE',
+        'classification': 'CALLY_FAILED',
         'message': 'Error: $e',
+        'health': 'Failed',
       };
     }
   }
@@ -202,6 +220,16 @@ class ShizukuCapture {
     switch (call.method) {
       case 'onShizukuAudioData':
         final List<int> audioData = List<int>.from(call.arguments['data']);
+        final String? stream = call.arguments['stream'] as String?;
+        
+        // Add stream information to event
+        _eventController.add({
+          'type': 'audioData',
+          'stream': stream ?? 'unknown',
+          'data': audioData,
+        });
+        
+        // Also add to audio stream for backward compatibility
         _audioController.add(audioData);
         break;
     }

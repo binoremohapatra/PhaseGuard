@@ -15,8 +15,14 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
+import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 
 class MainActivity : FlutterActivity() {
@@ -32,7 +38,13 @@ class MainActivity : FlutterActivity() {
     private var isCapturing = false
     
     private var bluetoothScoCapture: BluetoothScoCapture? = null
-    private var shizukuAudioCapture: ShizukuAudioCapture? = null
+    // Shizuku capture disabled - not in scope for current implementation
+    // private var shizukuAudioCapture: ShizukuAudioCapture? = null
+    // private var recordingPriorityManager: RecordingPriorityManager? = null
+    private var audioCaptureModule: AudioCaptureModule? = null
+    
+    // Coroutine scope for async operations
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -43,10 +55,20 @@ class MainActivity : FlutterActivity() {
         // Initialize Bluetooth SCO capture
         bluetoothScoCapture = BluetoothScoCapture()
         bluetoothScoCapture?.initialize(this, flutterEngine.dartExecutor.binaryMessenger!!)
-        
-        // Initialize Shizuku audio capture
-        shizukuAudioCapture = ShizukuAudioCapture()
-        shizukuAudioCapture?.initialize(flutterEngine.dartExecutor.binaryMessenger!!, this)
+
+        // Shizuku audio capture disabled - not in scope for current implementation
+        // shizukuAudioCapture = ShizukuAudioCapture()
+        // shizukuAudioCapture?.initialize(flutterEngine.dartExecutor.binaryMessenger!!, this)
+
+        // Recording Priority Manager disabled - not in scope for current implementation
+        // recordingPriorityManager = RecordingPriorityManager(this)
+        // recordingPriorityManager?.initialize(flutterEngine.dartExecutor.binaryMessenger)
+
+        // Initialize Audio Capture Module for in-call recording
+        audioCaptureModule = AudioCaptureModule()
+        val audioCaptureMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "phaseguard/audio_capture")
+        val audioCaptureEventChannel = EventChannel(flutterEngine.dartExecutor.binaryMessenger, "phaseguard/audio_capture_events")
+        audioCaptureModule?.initialize(this, audioCaptureMethodChannel, audioCaptureEventChannel)
         
         methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
         methodChannel?.setMethodCallHandler { call, result ->
@@ -118,8 +140,9 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
-        
-        // Shizuku method channel
+
+        // Shizuku method channel disabled - not in scope for current implementation
+        /*
         val shizukuChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "phaseguard/shizuku_audio")
         shizukuChannel.setMethodCallHandler { call, result ->
             when (call.method) {
@@ -130,32 +153,14 @@ class MainActivity : FlutterActivity() {
                     shizukuAudioCapture?.requestShizukuPermission(result)
                 }
                 "startElevatedCapture" -> {
-                    val resultCode = call.argument<Int>("resultCode") ?: Activity.RESULT_CANCELED
-                    val data = call.argument<Map<String, Any>>("data")
                     val sampleRate = call.argument<Int>("sampleRate") ?: 16000
-                    
-                    if (data != null) {
-                        val intent = Intent().apply {
-                            data.forEach { (key, value) ->
-                                when (value) {
-                                    is String -> putExtra(key, value)
-                                    is Int -> putExtra(key, value)
-                                    is Boolean -> putExtra(key, value)
-                                }
-                            }
-                        }
-                        
-                        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-                        shizukuAudioCapture?.startElevatedCapture(
-                            mediaProjectionManager!!,
-                            resultCode,
-                            intent,
-                            sampleRate,
-                            result
-                        )
-                    } else {
-                        result.success(mapOf("success" to false, "message" to "No data provided"))
-                    }
+                    shizukuAudioCapture?.startElevatedCapture(
+                        null,
+                        Activity.RESULT_CANCELED,
+                        null,
+                        sampleRate,
+                        result
+                    )
                 }
                 "stopElevatedCapture" -> {
                     shizukuAudioCapture?.stopElevatedCapture(result)
@@ -168,6 +173,48 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+        */
+
+        // Recording Priority Manager method channel disabled - not in scope for current implementation
+        /*
+        val priorityChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "phaseguard/priority_recording")
+        priorityChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startPriorityRecording" -> {
+                    val sampleRate = call.argument<Int>("sampleRate") ?: 16000
+                    coroutineScope.launch {
+                        val recordingResult = recordingPriorityManager?.startRecording(sampleRate)
+                        result.success(mapOf(
+                            "success" to recordingResult?.success,
+                            "method" to recordingResult?.method?.name,
+                            "message" to recordingResult?.message,
+                            "health" to recordingResult?.health,
+                            "speakerphoneEnabled" to recordingResult?.speakerphoneEnabled,
+                            "hardwareRecommended" to recordingResult?.hardwareRecommended,
+                            "hardwareOptions" to recordingResult?.hardwareOptions
+                        ))
+                    }
+                }
+                "stopPriorityRecording" -> {
+                    coroutineScope.launch {
+                        val recordingResult = recordingPriorityManager?.stopRecording()
+                        result.success(mapOf(
+                            "success" to recordingResult?.success,
+                            "method" to recordingResult?.method?.name,
+                            "message" to recordingResult?.message
+                        ))
+                    }
+                }
+                "getRecordingStatus" -> {
+                    val status = recordingPriorityManager?.getRecordingStatus()
+                    result.success(status)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
+        */
     }
     
     private fun requestPermissionAndStart(sampleRate: Int, result: MethodChannel.Result) {
@@ -291,7 +338,9 @@ class MainActivity : FlutterActivity() {
             override fun notImplemented() {}
         })
         bluetoothScoCapture?.cleanup()
-        shizukuAudioCapture?.cleanup()
+        // Shizuku audio capture disabled - not in scope for current implementation
+        // shizukuAudioCapture?.cleanup()
+        audioCaptureModule?.cleanup()
     }
     
     companion object {

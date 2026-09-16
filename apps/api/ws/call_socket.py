@@ -504,6 +504,28 @@ async def _stt_loop(call_id: str) -> None:
                 "ts": _ts(),
             })
 
+            # --- LOCAL LLM ZERO-LATENCY TRAPDOOR ---
+            from factcheck.local_llm import LocalScamClassifier
+            local_classifier = LocalScamClassifier()
+            if local_classifier.is_loaded:
+                local_prediction = await local_classifier.predict_instant_scam(transcript)
+                if local_prediction and local_prediction.get("is_scam"):
+                    logger.warning("[LOCAL LLM TRAPDOOR] Instant Scam Detected: %s", local_prediction.get("category"))
+                    
+                    verdict_entry = {
+                        "status": "CRITICAL",
+                        "message": "⚠️ INSTANT ALERT (Local AI): " + local_prediction.get("reasoning", "Suspicious claim detected."),
+                        "evidence_urls": [],
+                        "category": local_prediction.get("category", "UNKNOWN"),
+                        "ts": _ts(),
+                    }
+                    session.factcheck_history.append(verdict_entry)
+                    await manager.send_json(call_id, {
+                        "type": "factcheck_update",
+                        **verdict_entry,
+                    })
+            # ---------------------------------------
+
             if session.state == CallState.SCAMBAITER_ACTIVE:
                 # Bypass fact-checking and queue the transcript directly for the scambaiter loop
                 # We do this immediately instead of waiting for claim_extractor to accumulate 50 chars

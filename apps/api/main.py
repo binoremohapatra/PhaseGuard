@@ -67,6 +67,9 @@ async def lifespan(app: FastAPI):
     from core.config import get_settings
     get_settings().log_startup_summary()
     
+    from factcheck.local_llm import LocalScamClassifier
+    LocalScamClassifier().load_model()
+    
     get_executor()  # Pre-create the ThreadPoolExecutor
     yield
     logger.info("PhaseGuard API shutting down…")
