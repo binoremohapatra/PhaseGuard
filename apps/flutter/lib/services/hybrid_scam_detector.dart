@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 class HybridScamDetector {
-  static const String _baseUrl = 'http://192.168.1.100:8000'; // Backend URL
+  static const String _baseUrl = 'http://127.0.0.1:8000'; // Backend URL
   static const int _timeoutMs = 5000; // 5 seconds for web fallback
   
   final ScamDetector _localDetector = ScamDetector();
@@ -12,12 +12,12 @@ class HybridScamDetector {
   /// Main detection method - tries local model first, falls back to web
   Future<Map<String, dynamic>> detectScam(String transcript) async {
     // 1. Try local rule-based detection first (fast)
-    final localResult = _localDetector.detectScam(transcript);
+    final localResult = ScamDetector.detectScam(transcript);
     
     // 2. If local is confident, return immediately
-    if (localResult['isScam'] == true) {
+    if (localResult.isScam == true) {
       return {
-        ...localResult,
+        ...localResult.toJson(),
         'source': 'local',
         'confidence': 0.9,
       };
@@ -43,9 +43,9 @@ class HybridScamDetector {
     
     // 5. Fallback to local rules (conservative)
     return {
-      ...localResult,
+      ...localResult.toJson(),
       'source': 'local_fallback',
-      'reasoning': '${localResult['reasoning']} (web unavailable)',
+      'reasoning': '${localResult.reasoning} (web unavailable)',
     };
   }
   

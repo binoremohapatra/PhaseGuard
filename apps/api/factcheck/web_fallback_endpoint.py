@@ -5,7 +5,7 @@ This is used when local model fails or is uncertain
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from local_llm import LocalScamClassifier
+from verifier import FactCheckVerifier
 import asyncio
 
 app = FastAPI()
@@ -13,30 +13,40 @@ app = FastAPI()
 class ScamRequest(BaseModel):
     transcript: str
 
-classifier = LocalScamClassifier()
+verifier = FactCheckVerifier()
 
 @app.on_event("startup")
 async def startup():
-    print("Loading scam classifier...")
-    classifier.load_model()
+    print("Loading FactCheckVerifier (LLM-based web fallback)...")
     print("Classifier loaded successfully!")
 
 @app.post("/predict")
 async def predict(request: ScamRequest):
     try:
-        result = await classifier.predict_instant_scam(request.transcript)
+        # Deep fact-check via the verification pipeline
+        result = await verifier.verify_transcript(request.transcript)
+        
+        # If the result has an error, default to uncertain
+        if "error" in result and "is_scam" not in result:
+             return {
+                 "is_scam": False,
+                 "category": "UNKNOWN",
+                 "reasoning": result["error"],
+                 "confidence": 0.0
+             }
+             
         return {
-            "is_scam": result["is_scam"],
-            "category": result["category"],
-            "reasoning": result.get("reasoning", ""),
-            "confidence": 0.9 if result["is_scam"] else 0.1
+            "is_scam": result.get("is_scam", False),
+            "category": result.get("title", "UNKNOWN"),
+            "reasoning": result.get("explanation", ""),
+            "confidence": result.get("confidence", 0.5)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy", "model_loaded": classifier.model is not None}
+    return {"status": "healthy", "verifier_loaded": True}
 
 if __name__ == "__main__":
     import uvicorn

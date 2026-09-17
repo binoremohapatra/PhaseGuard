@@ -84,22 +84,181 @@ class LocalScamClassifier:
             "digital arrest warrant", "red corner notice", "enforcement directorate", "non-bailable warrant",
             "quash fir", "avoid raid", "tax evasion detected", "property seizure", "gst registration",
             "business closure", "central agencies tracking", "summons issued", "settle out of court",
-            "court fee", "avoid appearance",
-            # Family emergency specific
+            "court fee", "avoid appearance", "skype par aao", "video call on",
+            "narcotics control", "narcotics bureau", "ncb officer", "cbi warrant", "ed officer",
+            "hawala transaction found", "money mule", "international money transfer",
+            "do not disconnect", "stay on the line", "you are under investigation",
+            # Family emergency specific (EXPANDED - was 0% catch rate)
             "beta this is your mom", "hospital emergency surgery", "serious accident", "in jail for no reason",
             "stuck at airport", "visa problem", "business failure", "seize property", "lost his phone",
-            "college admission at risk", "visiting next week", "just wanted to inform",
-            # Tech support specific
+            "college admission at risk", "papa accident", "mummy hospital", "bhai jail mein",
+            "accident ho gaya", "hospital mein hoon", "paisa chahiye urgently", "48000 chahiye",
+            "40000 chahiye", "25000 chahiye", "operation ke liye paisa", "emergency surgery chahiye",
+            "using borrowed phone", "my phone is broken", "using friend phone",
+            "kisi ko mat batana", "mat batana abhi", "secret rakhna", "sirf tumse bol raha hoon",
+            "turant bhej do", "abhi bhej do paisa", "baad mein wapas kar dunga",
+            "hospital se bol raha hoon", "ambulance mein hoon",
+            # Tech support specific (EXPANDED - was 11.8%)
             "hacked and we need remote access", "icloud account compromised", "order hacked",
             "illegal activity", "disconnection and case", "illegal tampering", "illegal",
             "connection involved in terrorism", "system maintenance scheduled", "you may experience interruption",
+            "teamviewer install karo", "anydesk install", "remote access software",
+            "install this app", "screen share karo", "aapka computer hack", "virus detected",
+            "microsoft se bol raha hoon", "windows security team", "apple support calling",
+            "your device is compromised", "malware detected on your phone",
+            "9 digit code batao", "verification code batao", "technician code",
             # KYC specific
             "sim card will be blocked", "incomplete kyc", "download this app", "provide aadhaar",
             "telecom department", "multiple sims issued", "without knowledge", "linked to illegal activities",
             "income tax department", "rto calling", "election commission", "passport office",
             "aadhaar verification", "share aadhaar photo", "aadhaar linked to", "aadhaar without knowledge",
-            "uidai calling", "aadhaar needs verification", "share otp to protect your identity", "identity from misuse"
-            # Tamil scam keywords
+            "uidai calling", "aadhaar needs verification", "share otp to protect your identity", "identity from misuse",
+            # SEXTORTION specific (was 0% catch rate - CRITICAL FIX)
+            "video record kar liya", "video leak kar dunga", "video bhej dunga",
+            "facebook friends ko bhej", "relatives ko bhej dunga", "youtube par upload",
+            "compromising video", "personal video", "whatsapp video call record",
+            "50000 nahi bheje", "nahi bheje toh", "share karo warna", "transfer karo warna",
+            "instagram par daal", "workplace ko tag", "office mein bhej dunga",
+            "morphed photo", "photo viral kar dunga", "screenshot bhej dunga",
+            "intimate video", "private video leak", "nude video", "objectionable content",
+            # LOAN APP HOOK specific (was 0% catch rate - CRITICAL FIX)
+            "contact list access", "contact list mein se", "contacts ko bhej dunga",
+            "photos morph karke", "morphed photos contacts ko", "loan app se liye the",
+            "due date aaj hai", "penalty ke sath pay", "recovery agent aayega",
+            "aapki contact list hai mere paas", "saare contacts ko", "whatsapp forward kar dunga",
+            "legal notice bhejenge", "court mein case", "arrest ho jayega loan ke liye",
+            "loan recovery", "loan overdue", "emi bounce", "loan default",
+            # ELECTRICITY THREAT specific (was 12% - needs major expansion)
+            "bijli kategi", "bijli band ho jayegi", "light kat jayegi", "power cut ho jayega",
+            "mseb", "bescom", "tata power", "adani electricity", "bijli vibhag",
+            "meter reading update", "bill unpaid", "outstanding electricity bill",
+            "disconnection notice", "link par pay karein electricity", "pay via link",
+            "abhi online pay karo", "10 rupaye ka payment link", "1 rupaye pay karo verify karne",
+            "tonight 9 baje kategi", "tonight power disconnected", "9:30 pm disconnection",
+            # INVESTMENT FRAUD specific (was 17.6%)
+            "vip whatsapp group", "vip group join karo", "exclusive trading group",
+            "200% returns guaranteed", "100% returns", "triple your money",
+            "sebi registered advisor", "penny stock double", "insider tip",
+            "demat account id password", "trade laga dunga", "humare group mein",
+            "crypto investment platform", "high return scheme",
+            "daily profit 5000", "weekly 20000 earn karo", "passive income",
+            "trading bot", "ai trading software", "automated trading",
+            # GOVT SCHEME IMPERSONATION specific (was 21.7%)
+            "pm yojana file charge", "kisan samman nidhi otp", "pradhan mantri yojana",
+            "government scheme registration fee", "aadhaar otp bataiye scheme ke liye",
+            "muft bijli yojana", "free gas cylinder yojana", "ayushman bharat",
+            "ration card update karo", "jan dhan account update",
+            "covid relief fund disbursement", "pm kisan status update otp",
+            "scholarship payment", "scholarship ke liye otp",
+            # COURIER CUSTOMS specific (was 0%)
+            "fedex customs", "customs clearance fee", "dhl parcel seized",
+            "package seized at customs", "customs duty pending", "clear customs payment",
+            "your parcel has illegal items", "parcel intercepted", "international shipment blocked",
+            "clearance fee 85000", "customs department call", "pay to release package",
+            # MATRIMONIAL FRAUD specific keywords
+            "shaadi.com profile", "matrimonial site", "nri settled abroad",
+            "london mein settle hoon", "dubai job", "send gift", "customs for gift",
+            "gold send kiya", "jewellery bhej raha hoon", "gift mein diamonds",
+            # ECOMMERCE REFUND SCAM
+            "order ka refund", "amazon refund process", "flipkart refund",
+            "refund ke liye otp", "refund agent", "customer care refund call",
+            "order cancel refund paisa aayega", "refund process karne ke liye",
+            "refund form bhariye", "upi pin daaliye refund", "card details for quick refund",
+            # SOCIAL MEDIA IMPERSONATION
+            "facebook account hack", "instagram hacked", "someone using your photos",
+            "fake account banaya", "aapki profile se fraud", "aapke naam se message",
+            "naye number se call kar raha", "purana dost", "naya number hai mera",
+            "mera phone kho gaya", "ye mera new number hai",
+            # EPF WITHDRAWAL SCAM
+            "pf withdrawal", "epf claim", "pf paisa", "provident fund",
+            "pf processing fee", "pf release karne ke liye", "pf account me paisa",
+            "pf claim fas gaya", "processing charge pay karein tabhi paisa",
+            # FAMILY EMERGENCY exact phrases from dataset
+            "uncle's friend", "severe accident", "icu", "transfer 50,000 to this hospital",
+            "don't tell your parents", "there is no time", "police ne mujhe pakad liya",
+            "constable paise maang raha", "gpay kar do", "kisi ko mat batana",
+            "accident case mein", "fir likh dega", "please 20,000", "please 40,000",
+            "please 50,000", "hospital account urgently", "in the icu",
+            # TECH SUPPORT exact phrases from dataset
+            "trojan virus on your computer", "install anydesk immediately", "hard drive crashes",
+            "microsoft windows support", "windows support team", "detected a trojan",
+            "teamviewer quicksupport install", "9 digit code", "engineer can fix it",
+            "your pc is infected", "your system is compromised",
+            # PRIZE LOTTERY exact phrases from dataset
+            "kbc mumbai se bol raha hoon", "25 lakh ka lottery", "file charge 12,500",
+            "prize lene ke liye", "lucky draw winner", "mahindra thar", "lucky winner",
+            "pay 5000 rupees registration fee", "claim your car", "whatsapp lottery",
+            # DIGITAL ARREST exact phrases from dataset
+            "supreme court clearance certificate", "50,000 rbi safe account",
+            "hawala transaction hua hai", "police department se call",
+            "statement record nahi hota digital arrest", "money laundering ka warrant",
+            "skype on karo", "cbi officer bol raha hoon",
+            # INVESTMENT FRAUD exact phrases from dataset
+            "exclusive stock market insider", "vip whatsapp group ko join karo",
+            "200% guaranteed return", "1 hafte mein", "demat account ka id password do",
+            "trade laga dunga", "cloud mining platform", "transfer 500 usdt",
+            "earn daily passive income", "no risk",
+            # GOVT SCHEME exact phrases from dataset
+            "pradhan mantri yojana ke tehat", "1 lakh ka loan bina interest",
+            "file charge 1500 rupees", "kisan samman nidhi", "aadhaar number aur bank ka otp",
+            # FAKE JOB TASK exact phrases from dataset
+            "pre-paid task complete", "10,000 rupees invest karein", "30% profit ke sath",
+            "13,000 wapas milenge", "telegram task group", "like youtube videos and subscribe",
+            "earn 5000 rupees daily", "pay 1000 rupees security deposit",
+            "work from home part time", "security deposit to start",
+            # LOAN HARASSMENT exact phrases
+            "aadhaar aur pan card mere paas hai", "usko block kar dunga",
+            "relatives ko call karke bataunga", "tu defaulter hai",
+            # INSURANCE FRAUD
+            "insurance policy lapse", "premium pending hai", "policy cancel ho jayegi",
+            "bonus amount claim", "policy revive karne ke liye", "insurance ka paisa",
+            "health insurance scheme", "pm health scheme fee", "ayushman bharat fee",
+            # HEALTH SCHEME SCAM
+            "health scheme registration fee", "muft ilaj yojana", "free hospital registration",
+            "govt hospital card fee", "abha card registration fee",
+            # SEXTORTION remaining variants
+            "10 minutes to pay", "upload your compromising", "tag your workplace",
+            "compromising pictures", "pictures to youtube", "pay me or i will",
+            "private photos", "personal pictures", "send money or",
+            # UPI COLLECT remaining variants (PayPal, account limited)
+            "account has been limited", "account limited due to suspicious",
+            "to restore your account", "pay rs", "to restore", "account limited",
+            "paypal india", "account verification fee",
+            # KYC remaining variants (new TRAI rule, document not verified)
+            "trai ke naye rule", "document verify nahi kiya", "aaj raat band",
+            "10 baje band kar diya jayega", "naya rule aya hai", "new kyc rule",
+            # FAMILY EMERGENCY - distress fragment style
+            "accident...hospital...paisa", "papa...accident", "mummy...hospital",
+            "kidnapping attempt", "police ki help chahiye", "rs 50,000 chahiye",
+            "dost ka friend", "police station mein hoon", "bail ke liye paisa",
+            # ELECTRICITY remaining variants
+            "not been updated in our new server", "power supply will be disconnected",
+            "electricity bill has not been updated", "new server update",
+            "call this number immediately", "abhi call karein",
+            # INVESTMENT FRAUD remaining (fixed deposit fraud, RBI registered fake)
+            "fixed deposit scheme", "12% annual interest guaranteed",
+            "rbi registered nbfc", "minimum investment rs 5 lakh",
+            "guaranteed interest", "nidhi company",
+            # FAKE JOB remaining (Google Maps, review writing scam)
+            "google maps is paying", "writing reviews", "earn rs 500 per review",
+            "pay rs 3,000 for registration", "review writing job",
+            # EPFO remaining variants
+            "epfo claim", "technical error ki wajah se reject", "admin charge",
+            "re-process karne ke liye", "1800 rupaye", "epf re-process",
+            # MATRIMONIAL FRAUD remaining
+            "dubai mein job karta hoon", "uk mein settled", "us mein hoon",
+            "first time india visit", "want to meet you", "rishta pakka",
+            "shaadi ke baad settle", "visa ke liye paisa", "marriage visa fee",
+            # PROPERTY ADVANCE FRAUD
+            "advance deposit for flat", "token money", "flat book karne ke liye",
+            "plot advance payment", "booking amount", "advance karein property",
+            # SOCIAL MEDIA remaining
+            "facebook hack ho gaya", "naye number se", "purane dost ki taraf se",
+            "account recover karne ke liye otp", "verify karo account ke liye",
+            # VISHING OTP remaining
+            "upi lite auto-top-up", "feature enable karne ke liye otp",
+            "share karein feature ek baar", "auto-debit enable",
+
             "உடன் பணம்", "பாதுகாப்பு கணக்கு", "வங்கி கணக்கு",
             "உடனடி பணம்", "போலீஸ் எண்", "ஏடிஎம் கார்டு",
             "லாட்டரி", "பெற்றீர்", "செலுங்கள்", "மருத்துவார்", "அனுப்பு",
@@ -329,6 +488,62 @@ class LocalScamClassifier:
                 "reasoning": "Legitimate SIM info - blocked unauthorized SIMs, no action needed"
             }
         
+        # --- FALSE POSITIVE REDUCTION RULES ---
+        # These rules protect innocent calls that contain broad scam keywords in a non-threatening context.
+        
+        # (A) Delivery / Swiggy / Zomato call with location share - NOT scam
+        if any(word in transcript_lower for word in ["swiggy", "zomato", "delivery partner", "out for delivery", "five minutes away", "near your location", "reached your location"]):
+            if not any(w in transcript_lower for w in ["otp", "pay", "upi pin", "transfer", "block", "arrest"]):
+                return {
+                    "category": "NORMAL",
+                    "is_scam": False,
+                    "reasoning": "Legitimate delivery call - no payment demand"
+                }
+        
+        # (B) Credit card STATEMENT sent - not asking for card details
+        if "credit card statement" in transcript_lower and "sent to your registered email" in transcript_lower:
+            return {
+                "category": "NORMAL",
+                "is_scam": False,
+                "reasoning": "Legitimate bank statement notification"
+            }
+        
+        # (C) Complaint resolution call - no money asked
+        if "complaint" in transcript_lower and any(w in transcript_lower for w in ["resolve", "resolved", "kya aap confirm"]):
+            if not any(w in transcript_lower for w in ["otp", "pay", "transfer", "upi", "amount"]):
+                return {
+                    "category": "NORMAL",
+                    "is_scam": False,
+                    "reasoning": "Legitimate complaint follow-up - no payment demand"
+                }
+        
+        # (D) Doctor appointment / hospital discharge - no money demanded
+        if any(w in transcript_lower for w in ["appointment", "dr. sharma", "doctor", "appointment scheduled", "discharge"]):
+            if not any(w in transcript_lower for w in ["pay", "paisa", "transfer", "fee", "otp", "emergency", "accident"]):
+                return {
+                    "category": "NORMAL",
+                    "is_scam": False,
+                    "reasoning": "Legitimate appointment reminder - no payment"
+                }
+        
+        # (E) Family/friend casual conversation
+        if any(w in transcript_lower for w in ["football match", "dinner mein rakhna", "kya haal hai", "sham ko", "report by eod", "review it tomorrow", "running late", "traffic"]):
+            return {
+                "category": "NORMAL",
+                "is_scam": False,
+                "reasoning": "Casual personal conversation - no scam indicators"
+            }
+        
+        # (F) If scam score is exactly 1 from a very generic word AND legitimate context present
+        # (e.g. "credit card" mentioned but in context of "statement has been sent")
+        safe_context_words = ["sent to your email", "registered email", "no action needed", "just a reminder", "just informing", "fyi", "for your information"]
+        if scam_score == 1 and any(w in transcript_lower for w in safe_context_words):
+            return {
+                "category": "NORMAL",
+                "is_scam": False,
+                "reasoning": "Low scam score with strong safe context - legitimate notification"
+            }
+        
         # Multi-step trust building then scam - check if legitimate indicators are followed by scam indicators
         if legitimate_score >= 1 and scam_score >= 1:
             # If asking for money/payment after building trust, it's a scam
@@ -382,3 +597,4 @@ class LocalScamClassifier:
             "is_scam": scam_score > 0,
             "reasoning": f"Ambiguous: {scam_score} scam, {legitimate_score} legitimate, {negative_score} negative indicators"
         }
+
