@@ -31,7 +31,7 @@ _TTS_LANGUAGE = os.getenv("TTS_LANGUAGE", "hi")  # Hindi default for India-marke
 
 async def synthesize_speech(text: str, call_id: str = "") -> bytes | None:
     """
-    Convert text to PCM16LE audio bytes.
+    Convert text to PCM16LE audio bytes with intelligent fallback.
 
     Parameters
     ----------
@@ -44,29 +44,62 @@ async def synthesize_speech(text: str, call_id: str = "") -> bytes | None:
     -------
     bytes or None
         PCM16LE audio at 16kHz mono, or None on failure.
+        
+    Fallback Strategy:
+    1. Try configured backend (xtts, elevenlabs, google, gtts)
+    2. If primary backend fails, automatically fall back to gTTS
+    3. If gTTS fails, return mock silence
     """
     backend = _TTS_BACKEND.lower()
     logger.info("TTS[%s]: backend=%r text=%r", call_id, backend, text[:60])
 
+    result = None
+    
+    # Try primary backend
     if backend == "gtts":
-        return await _gtts_synthesize(text)
+        result = await _gtts_synthesize(text)
     elif backend == "elevenlabs":
-        return await _elevenlabs_synthesize(text)
+        result = await _elevenlabs_synthesize(text)
     elif backend == "google":
-        return await _gcloud_tts_synthesize(text)
+        result = await _gcloud_tts_synthesize(text)
     elif backend == "xtts":
         from core.connection_manager import manager
         session = manager.get_session(call_id)
         if session and session.user_voice_sample_path:
-            return await _xtts_synthesize(text, session.user_voice_sample_path)
+            # Try XTTS with timeout
+            try:
+                import asyncio
+                result = await asyncio.wait_for(
+                    _xtts_synthesize(text, session.user_voice_sample_path),
+                    timeout=5.0  # 5 second timeout for XTTS
+                )
+                logger.info("TTS[%s]: XTTS synthesis successful", call_id)
+            except asyncio.TimeoutError:
+                logger.warning("TTS[%s]: XTTS timeout, falling back to gTTS", call_id)
+                result = await _gtts_synthesize(text)
+            except Exception as e:
+                logger.warning("TTS[%s]: XTTS failed with %s, falling back to gTTS", call_id, e)
+                result = await _gtts_synthesize(text)
         else:
             logger.warning("TTS[xtts]: missing user_voice_sample_path for call_id=%r, falling back to gTTS", call_id)
-            return await _gtts_synthesize(text)
+            result = await _gtts_synthesize(text)
     elif backend == "mock":
         return _mock_silence(duration_seconds=2.0)
     else:
         logger.warning("TTS: unknown backend %r — falling back to gTTS", backend)
-        return await _gtts_synthesize(text)
+        result = await _gtts_synthesize(text)
+    
+    # If primary backend failed, try gTTS as fallback
+    if result is None and backend != "gtts":
+        logger.warning("TTS[%s]: primary backend failed, falling back to gTTS", call_id)
+        result = await _gtts_synthesize(text)
+    
+    # If gTTS also failed, return mock silence
+    if result is None:
+        logger.error("TTS[%s]: all backends failed, returning mock silence", call_id)
+        result = _mock_silence(duration_seconds=2.0)
+    
+    return result
 
 
 async def _gtts_synthesize(text: str) -> bytes | None:

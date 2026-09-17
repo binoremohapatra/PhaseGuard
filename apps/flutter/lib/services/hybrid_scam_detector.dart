@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'scam_detector.dart';
+import 'llama_scam_detector.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -49,19 +50,18 @@ class HybridScamDetector {
     };
   }
   
-  /// Try local model inference (placeholder for llama.cpp integration)
+  /// Try local model inference (llama.cpp integration)
   Future<Map<String, dynamic>?> _tryLocalModel(String transcript) async {
     try {
-      // TODO: Integrate llama.cpp model here
-      // This would use llama_dart or flutter_llama package
-      // For now, return null to use web fallback
+      final llamaDetector = LlamaScamDetector();
+      await llamaDetector.loadModel();
       
-      // Example implementation:
-      // final model = LlamaModel.fromFile('assets/models/model.gguf');
-      // final result = await model.generate(transcript);
-      // return _parseModelResult(result);
+      if (llamaDetector.isLoaded) {
+        final result = await llamaDetector.detectScam(transcript);
+        return result;
+      }
       
-      return null; // Not implemented yet
+      return null; // Model not loaded
     } catch (e) {
       print('Local model error: $e');
       return null;
