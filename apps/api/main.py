@@ -330,6 +330,54 @@ async def upload_video_frame(
 
     raise HTTPException(status_code=400, detail="Failed to process frame")
 
+
+@app.post("/call/{call_id}/voice-sample")
+@limiter.limit(LIMIT_API)
+async def upload_voice_sample(
+    request: Request,
+    call_id: str,
+    file: UploadFile = File(...),
+    credentials: HTTPAuthorizationCredentials = Depends(_bearer),
+) -> dict:
+    """
+    Accepts an uploaded audio sample of the user's voice for XTTS cloning.
+    Saves it to a temporary directory and updates the CallSession.
+    """
+    if credentials:
+        verify_call_token_for_call(credentials.credentials, call_id)
+    else:
+        raise HTTPException(status_code=401, detail="Missing token")
+
+    session = manager.get_session(call_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Call session not found")
+
+    if file.content_type not in ["audio/wav", "audio/x-wav", "audio/mpeg", "audio/mp3"]:
+        raise HTTPException(status_code=400, detail="Invalid content type. Expected WAV or MP3.")
+        
+    if file.size and file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Payload too large. Maximum size is 10MB.")
+
+    import os
+    import shutil
+    
+    upload_dir = "samples/user_voices"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    file_extension = ".wav" if "wav" in file.content_type else ".mp3"
+    file_path = os.path.join(upload_dir, f"voice_{call_id}{file_extension}")
+    
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        session.user_voice_sample_path = file_path
+        logger.info("Saved user voice sample for voice cloning: call_id=%r path=%r", call_id, file_path)
+        return {"status": "ok", "path": file_path}
+    except Exception as e:
+        logger.error("Failed to save user voice sample: %s", e)
+        raise HTTPException(status_code=500, detail="Failed to save voice sample")
+
 @app.get("/call/{call_id}/dossier")
 @limiter.limit(LIMIT_API)
 async def get_dossier(

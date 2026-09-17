@@ -54,6 +54,14 @@ async def synthesize_speech(text: str, call_id: str = "") -> bytes | None:
         return await _elevenlabs_synthesize(text)
     elif backend == "google":
         return await _gcloud_tts_synthesize(text)
+    elif backend == "xtts":
+        from core.connection_manager import manager
+        session = manager.get_session(call_id)
+        if session and session.user_voice_sample_path:
+            return await _xtts_synthesize(text, session.user_voice_sample_path)
+        else:
+            logger.warning("TTS[xtts]: missing user_voice_sample_path for call_id=%r, falling back to gTTS", call_id)
+            return await _gtts_synthesize(text)
     elif backend == "mock":
         return _mock_silence(duration_seconds=2.0)
     else:
@@ -175,3 +183,45 @@ def _mock_silence(duration_seconds: float = 2.0, fs: int = 16_000) -> bytes:
     """Return PCM16LE silence bytes (for testing without TTS credentials)."""
     n_samples = int(duration_seconds * fs)
     return np.zeros(n_samples, dtype=np.int16).tobytes()
+
+_xtts_model = None
+
+async def _xtts_synthesize(text: str, reference_audio_path: str) -> bytes | None:
+    """
+    Synthesize via Coqui XTTS-v2 for zero-shot voice cloning.
+    """
+    try:
+        def _sync_xtts() -> bytes:
+            global _xtts_model
+            from TTS.api import TTS
+            import io as _io
+            import soundfile as sf
+            import librosa
+            
+            if _xtts_model is None:
+                logger.info("TTS: Loading XTTS-v2 model into memory...")
+                # Download and load the model (may take some time on first run)
+                _xtts_model = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
+                
+            logger.info("TTS[xtts]: synthesizing %d chars with voice clone %r", len(text), reference_audio_path)
+            # XTTS synthesis
+            wav = _xtts_model.tts(
+                text=text, 
+                speaker_wav=reference_audio_path, 
+                language=_TTS_LANGUAGE
+            )
+            
+            # XTTS outputs at 24kHz. Resample to 16kHz to match ingestion pipeline
+            wav_16k = librosa.resample(np.array(wav), orig_sr=24000, target_sr=16000)
+            
+            out_buf = _io.BytesIO()
+            sf.write(out_buf, wav_16k, 16000, format='WAV', subtype='PCM_16')
+            
+            return out_buf.getvalue()
+
+        from workers.executor import run_in_dsp_executor
+        return await run_in_dsp_executor(_sync_xtts)
+
+    except Exception as exc:
+        logger.error("XTTS synthesis failed: %s", exc)
+        return None

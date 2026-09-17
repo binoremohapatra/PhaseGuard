@@ -704,9 +704,9 @@ async def call_websocket(websocket: WebSocket, call_id: str) -> None:
 
     try:
         while True:
-            # Idle timeout: terminate connection if no audio received for 30 seconds
+            # Idle timeout: terminate connection if no audio received for 300 seconds (to allow XTTS loading)
             try:
-                message = await asyncio.wait_for(websocket.receive_bytes(), timeout=30.0)
+                message = await asyncio.wait_for(websocket.receive_bytes(), timeout=300.0)
             except asyncio.TimeoutError:
                 logger.warning("WebSocket idle timeout: call_id=%r", call_id)
                 break

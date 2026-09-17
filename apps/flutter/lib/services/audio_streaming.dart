@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'realtime_scam_detection.dart';
+import 'voice_deepfake_detector.dart';
 
 /// Audio streaming service
 /// 
@@ -9,7 +10,12 @@ import 'realtime_scam_detection.dart';
 /// Streams audio chunks to backend for scam detection
 class AudioStreaming {
   final RealtimeScamDetection _scamDetection;
+  final VoiceDeepfakeDetector _voiceDetector = VoiceDeepfakeDetector(sampleRate: 16000);
   
+  // Stream to broadcast local DSP results to UI
+  final StreamController<Map<String, dynamic>> _localDspController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get localDspStream => _localDspController.stream;
+
   static const MethodChannel _audioMethodChannel = MethodChannel('phaseguard/audio_capture');
   static const EventChannel _audioEventChannel = EventChannel('phaseguard/audio_capture_events');
   
@@ -117,8 +123,13 @@ class AudioStreaming {
   /// Handle audio events from native module
   void _handleAudioEvent(dynamic event) {
     if (event is List<int>) {
-      // Audio data chunk - send directly to backend
+      // 1. Process Locally First
       final audioChunk = Uint8List.fromList(event);
+      final int16List = audioChunk.buffer.asInt16List();
+      final dspResult = _voiceDetector.analyzeAudioBuffer(int16List);
+      _localDspController.add(dspResult);
+      
+      // 2. Send to Backend
       _scamDetection.sendAudioChunk(audioChunk);
     } else if (event is Map) {
       // Event (like speakerphone state change)

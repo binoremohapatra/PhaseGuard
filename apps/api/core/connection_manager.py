@@ -91,6 +91,9 @@ class CallSession:
     # Set by accessibility/offline_fallback.py when LLM/network APIs consistently fail.
     # DSP-only threat detection continues running in "limited" mode.
     mode: str = "full"
+    
+    # User voice sample for XTTS voice cloning
+    user_voice_sample_path: str | None = None
 
 
 class ConnectionManager:

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/realtime_scam_detection.dart';
 import '../services/audio_streaming.dart';
+import '../services/local_stt_service.dart';
+import '../services/scam_detector.dart';
 import '../theme/tokens.dart';
 
 /// Demo screen for real-time scam detection
@@ -18,6 +20,7 @@ class ScamDetectionDemo extends StatefulWidget {
 class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   final RealtimeScamDetection _scamDetection = RealtimeScamDetection();
   late final AudioStreaming _audioStreaming;
+  final LocalSttService _localSttService = LocalSttService();
   
   bool _isInitialized = false;
   bool _isRecording = false;
@@ -30,10 +33,18 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   String _audioSource = 'MIC';
   double _audioAmplitude = 0.0;
   
+  // Local DSP metrics
+  double _localTremorScore = 0.0;
+  double _localPhaseDispersion = 0.0;
+  
+  // Local NLP metrics
+  String _localTranscript = '';
+  
   @override
   void initState() {
     super.initState();
     _audioStreaming = AudioStreaming(scamDetection: _scamDetection);
+    _localSttService.initialize();
     _setupEventListeners();
     _checkPermissions();
   }
@@ -53,6 +64,20 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
     _scamDetection.transcriptStream.listen((text) {
       setState(() {
         _transcript += ' $text';
+      });
+    });
+    
+    // Listen for local offline STT transcript
+    _localSttService.transcriptStream.listen((text) {
+      setState(() {
+        _localTranscript = text;
+        
+        // Pass to ScamDetector (Keyword Rules Engine)
+        final scamResult = ScamDetector.detectScam(_localTranscript);
+        if (scamResult.isScam) {
+           _lastAlert = "LOCAL NLP ALERT: ${scamResult.reasoning}";
+           _status = 'LOCAL SCAM KEYWORDS DETECTED!';
+        }
       });
     });
     
@@ -82,6 +107,21 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
               _status = 'Safe';
             }
             break;
+        }
+      });
+    });
+
+    // Listen for local DSP events
+    _audioStreaming.localDspStream.listen((dspResult) {
+      setState(() {
+        if (dspResult['metrics'] != null) {
+          _localTremorScore = dspResult['metrics']['tremor_score'] ?? 0.0;
+          _localPhaseDispersion = dspResult['metrics']['phase_dispersion'] ?? 0.0;
+        }
+
+        if (dspResult['is_synthetic'] == true) {
+           _lastAlert = "LOCAL ALERT: ${dspResult['reason']}";
+           _status = 'LOCAL DEEPFAKE DETECTED!';
         }
       });
     });
@@ -154,6 +194,9 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
       final success = await _audioStreaming.startCapture(source: _audioSource);
       
       if (success) {
+        // Start local STT
+        _localSttService.startListening();
+        
         setState(() {
           _isRecording = true;
           _status = 'Recording & Analyzing...';
@@ -180,6 +223,8 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   
   void _stopRecording() async {
     await _audioStreaming.stopCapture();
+    await _localSttService.stopListening();
+    
     setState(() {
       _isRecording = false;
       _status = 'Recording stopped';
@@ -396,6 +441,35 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
                         ),
                       ),
                     ],
+                    // Show local DSP metrics if streaming
+                    if (_isRecording) ...[
+                      const SizedBox(height: 12),
+                      const Divider(color: PgColors.mediumBlue),
+                      const SizedBox(height: 8),
+                      Text(
+                        'ON-DEVICE DSP ANALYSIS',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: PgColors.safe,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tremor Score: ${_localTremorScore.toStringAsFixed(6)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _localTremorScore < 0.0001 ? PgColors.crit : PgColors.safe,
+                        ),
+                      ),
+                      Text(
+                        'Phase Dispersion: ${_localPhaseDispersion.toStringAsFixed(3)}',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: _localPhaseDispersion < 1.0 ? PgColors.crit : PgColors.safe,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -484,36 +558,73 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
             
             const SizedBox(height: 16),
             
-            // Transcript
+            // Transcripts Side-by-Side
             Expanded(
-              child: Card(
-                color: PgColors.bgSecondary,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Live Transcript',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: PgColors.mediumBlue,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Card(
+                      color: PgColors.bgSecondary,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Backend Transcript',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: PgColors.mediumBlue,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  _transcript.isEmpty
+                                      ? 'Waiting for backend...'
+                                      : _transcript,
+                                  style: const TextStyle(color: PgColors.white),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Expanded(
-                        child: SingleChildScrollView(
-                          child: Text(
-                            _transcript.isEmpty
-                                ? 'Waiting for transcription...'
-                                : _transcript,
-                            style: const TextStyle(color: PgColors.white),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: Card(
+                      color: PgColors.bgSecondary,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Local STT (Offline)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: PgColors.safe,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: SingleChildScrollView(
+                                child: Text(
+                                  _localTranscript.isEmpty
+                                      ? 'Waiting for local STT...'
+                                      : _localTranscript,
+                                  style: const TextStyle(color: PgColors.white),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

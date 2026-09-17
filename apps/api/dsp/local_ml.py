@@ -31,8 +31,8 @@ def load_models():
             from transformers import pipeline
             import torch
             
-            # Using a known robust model for ASVSpoof
-            model_id = "HyperMoon/wav2vec2-base-960h-finetuned-deepfake"
+            # Using a robust model for ASVSpoof
+            model_id = "abhishtagatya/wav2vec2-base-960h-itw-deepfake"
             device = 0 if torch.cuda.is_available() else -1
             
             _deepfake_pipeline = pipeline(
