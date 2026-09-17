@@ -10,6 +10,7 @@ import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
 import 'scam_detection_demo.dart';
+import 'local_scam_detection.dart';
 
 class CallsScreen extends StatefulWidget {
   const CallsScreen({super.key});
@@ -921,6 +922,25 @@ class _CallsListViewState extends State<_CallsListView> {
                 ),
                 child: const Text(
                   'Open Demo',
+                  style: TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LocalScamDetectionScreen(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: PgColors.primary,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: const Text(
+                  'Local Detection',
                   style: TextStyle(fontSize: 12),
                 ),
               ),

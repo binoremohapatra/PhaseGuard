@@ -57,3 +57,8 @@ apps/api/dataset_v2/
 apps/api/dataset_v3_holdout/
 apps/api/holdout_dataset/
 apps/api/samples/synthetic/
+*.gguf
+*.bin
+finetuned_scam_model/
+tinyllama_scam_full_model/
+llama.cpp/
