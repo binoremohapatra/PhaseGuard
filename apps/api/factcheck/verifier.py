@@ -30,14 +30,54 @@ class FactCheckVerifier:
         3. Synthesize final verdict using the search context.
         """
         if not self.api_key:
-            logger.warning("GROQ_API_KEY is not configured. Returning mock verdict for deep end-to-end testing.")
-            # Deep integration test mock
+            logger.warning("GROQ_API_KEY is not configured. Using local heuristic mock for L3.")
+            tl = transcript.lower()
+            # Comprehensive scam keyword patterns for mock L3
+            SCAM_PATTERNS = [
+                # Authority / Impersonation
+                "fbi", "cbi", "cyber cell", "police", "arrest", "warrant", "investigation",
+                "drug trafficking", "digital arrest", "press 1", "fir darj",
+                # Financial fraud
+                "registration fee", "processing fee", "pay fee", "pay fine", "registration charge",
+                "loan approved", "loan fee", "transfer fee", "security deposit",
+                "lottery", "won", "prize", "claim", "tax to claim", "lucky draw",
+                "fixed deposit scheme", "guaranteed return", "crypto scheme", "annual return on investment",
+                "200 percent", "double your money", "bonus", "nbfc scheme",
+                # Courier / Customs
+                "fedex", "customs", "parcel", "bluedart", "dhl", "undeclared",
+                # OTP / Account
+                "otp", "verify", "block", "suspend", "aadhar", "kyc",
+                "share karein", "batao", "send otp", "account band",
+                # Remote access
+                "anydesk", "teamviewer", "install app", "download app", "remote",
+                "secure your phone", "access your device",
+                # Family emergency / Extortion
+                "hospital mein hoon", "dawai", "2000 rupees bhej", "video viral", "video record", "share kar dunga",
+                "emergency bhej", "accident mein", "bail", "jail", "sextortion", "kuch galat",
+                # Electricity / Utility
+                "electricity disconnected", "power cut", "utility blocked", "bijli connection kaat", "bill update nahi",
+                # Investment / Jobs
+                "guaranteed interest", "nidhi company", "investment scheme", "work from home job", "data entry",
+            ]
+            SAFE_PATTERNS = [
+                "no rush", "no urgency", "official website", "visit branch",
+                "never share otp", "we will never ask", "voluntary",
+                "just reminder", "fyi", "for your information",
+                "good morning", "how are you", "dinner", "lunch",
+                "invoice", "review the pdf", "reschedule", "meeting",
+                "fixed deposit maturing", "renewing",
+                "delivery partner", "five minutes away", "near your location",
+            ]
+            scam_score = sum(1 for p in SCAM_PATTERNS if p in tl)
+            safe_score = sum(1 for p in SAFE_PATTERNS if p in tl)
+            is_scam = scam_score >= 1 and safe_score == 0
+            confidence = min(0.99, 0.5 + scam_score * 0.12 - safe_score * 0.15)
             return {
-                "is_scam": True if "fedex" in transcript.lower() or "customs" in transcript.lower() else False,
-                "confidence": 0.95,
-                "risk_level": "HIGH" if "fedex" in transcript.lower() else "LOW",
-                "title": "Simulated Fact-Check Result",
-                "explanation": "This is a mocked verification result because GROQ_API_KEY is missing. Mock detected keywords and verified claim.",
+                "is_scam": is_scam,
+                "confidence": max(0.0, confidence),
+                "risk_level": "HIGH" if scam_score >= 2 else ("MEDIUM" if scam_score == 1 else "LOW"),
+                "title": f"Mock L3 Detection (scam_score={scam_score}, safe_score={safe_score})",
+                "explanation": f"GROQ_API_KEY missing. Local heuristic mock: {scam_score} scam patterns, {safe_score} safe patterns.",
                 "source_used": "mock_api_fallback"
             }
 

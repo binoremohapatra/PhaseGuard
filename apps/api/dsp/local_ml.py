@@ -76,13 +76,39 @@ async def analyze_audio_local(window: np.ndarray, fs: int = 16_000) -> dict:
         # Run inference
         results = _deepfake_pipeline(audio_array)
         
-        # Parse results
-        top_result = results[0]
-        top_label = top_result.get("label", "unknown").lower()
-        score = top_result.get("score", 0.0)
+        # Parse results — model outputs sorted by score descending
+        # Labels: 'spoof' = AI-generated, 'bona-fide' = real human
+        top_label = results[0].get("label", "unknown").lower()
         
-        # Typically labels might be "spoof", "fake", "bonafide", "real"
-        is_synthetic = score > 0.5 if ("fake" in top_label or "spoof" in top_label) else False
+        # Always use the 'spoof' label score as the synthetic probability
+        spoof_score = 0.0
+        for r in results:
+            if "spoof" in r.get("label", "").lower() or "fake" in r.get("label", "").lower():
+                spoof_score = r.get("score", 0.0)
+                break
+        
+        # If no explicit spoof label found, infer from top label
+        if spoof_score == 0.0:
+            if "spoof" in top_label or "fake" in top_label:
+                spoof_score = results[0].get("score", 0.5)
+            else:
+                spoof_score = 1.0 - results[0].get("score", 0.5)
+        
+        score = spoof_score  # 0 = human, 1 = AI/synthetic
+        is_synthetic = score > 0.5
+        
+        # FIX: False Positive Override
+        # Heavily compressed audio (like WhatsApp) often fools ML models into thinking it's synthetic.
+        # If the ML model says it's fake, we cross-verify with our DSP Micro-Tremor engine.
+        # If physiological human tremor is detected, it overrides the ML prediction.
+        if is_synthetic:
+            from dsp.micro_tremor import compute_tremor_score
+            tremor_res = compute_tremor_score(window, fs)
+            if tremor_res.get('has_tremor', False):
+                logger.info(f"ML predicted FAKE ({score:.2f}) but DSP Micro-Tremor detected human physiology. Overriding to REAL.")
+                is_synthetic = False
+                top_label = "bonafide (dsp_override)"
+                score = 0.85  # Assign a high confidence for the override
         
         return {
             "status": "success",
