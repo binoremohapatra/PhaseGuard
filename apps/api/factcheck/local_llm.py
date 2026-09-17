@@ -826,6 +826,7 @@ class LocalScamClassifier:
                 "category": "SCAM_DETECTED",
                 "is_scam": True,
                 "is_confident": True,
+                "confidence": 1.0,
                 "layer": "keyword",
                 "reasoning": f"Layer 1 (Keyword): Strong detection ({scam_score} scam indicators)"
             }
@@ -834,6 +835,7 @@ class LocalScamClassifier:
                 "category": "NORMAL",
                 "is_scam": False,
                 "is_confident": True,
+                "confidence": 0.0,
                 "layer": "keyword",
                 "reasoning": f"Layer 1 (Keyword): Confirmed safe ({legitimate_score} legitimate indicators)"
             }
@@ -855,6 +857,7 @@ class LocalScamClassifier:
                         "category": "SCAM_DETECTED",
                         "is_scam": True,
                         "is_confident": True,
+                        "confidence": float(ml_score),
                         "layer": "tflite",
                         "reasoning": f"Layer 2 (TFLite): High confidence scam ({(ml_score * 100):.1f}%)"
                     }
@@ -863,6 +866,7 @@ class LocalScamClassifier:
                         "category": "NORMAL",
                         "is_scam": False,
                         "is_confident": True,
+                        "confidence": float(ml_score),
                         "layer": "tflite",
                         "reasoning": f"Layer 2 (TFLite): High confidence safe ({((1 - ml_score) * 100):.1f}%)"
                     }
@@ -871,6 +875,7 @@ class LocalScamClassifier:
                         "category": "UNKNOWN",
                         "is_scam": bool(ml_score >= 0.5),
                         "is_confident": False,
+                        "confidence": float(ml_score),
                         "layer": "tflite_fallback",
                         "reasoning": f"Layer 2 (TFLite): Uncertain (score={ml_score:.2f}). Needs Web verification."
                     }

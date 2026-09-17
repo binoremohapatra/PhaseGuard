@@ -5,7 +5,7 @@ from typing import Any
 
 from groq import AsyncGroq
 
-from search import execute_resilient_search
+from factcheck.search import execute_resilient_search
 
 logger = logging.getLogger(__name__)
 

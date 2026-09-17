@@ -17,6 +17,9 @@ class RealtimeScamDetection {
   String? _token;
   bool _isConnected = false;
   bool _isRecording = false;
+
+  final LocalSttService _localStt = LocalSttService();
+  StreamSubscription<String>? _sttSubscription;
   
   final StreamController<Map<String, dynamic>> _eventController = StreamController<Map<String, dynamic>>.broadcast();
   final StreamController<String> _transcriptController = StreamController<String>.broadcast();
@@ -47,7 +50,7 @@ class RealtimeScamDetection {
       // Convert wsUrl to proper WebSocket URL
       final wsUrl = _apiClient.websocketUrl(initResult);
       
-      // Connect to WebSocket
+      // Connect to WebSocket (for raw audio streaming to backend Deepfake/L3 models)
       _wsChannel = WebSocketChannel.connect(Uri.parse(wsUrl));
       
       // Listen for WebSocket messages
@@ -56,6 +59,19 @@ class RealtimeScamDetection {
         onError: _handleError,
         onDone: _handleDisconnect,
       );
+      
+      // Hook up Local STT (replaces backend transcript dependency)
+      _sttSubscription = _localStt.transcriptStream.listen((text) {
+        if (text.isNotEmpty) {
+          _transcriptController.add(text);
+          // Accumulate transcript and run 3-layer local detection
+          _accumulatedText += ' $text';
+          _runLocalDetection(_accumulatedText.trim());
+        }
+      });
+      
+      // Start listening to mic locally for STT
+      await _localStt.startListening();
       
       _isConnected = true;
       
@@ -199,6 +215,8 @@ class RealtimeScamDetection {
   }
   
   void _handleDisconnect() {
+    _localStt.stopListening();
+    _sttSubscription?.cancel();
     _isConnected = false;
     _isRecording = false;
     
@@ -210,6 +228,8 @@ class RealtimeScamDetection {
   }
   
   void dispose() {
+    _localStt.dispose();
+    _sttSubscription?.cancel();
     _wsChannel?.sink.close();
     _eventController.close();
     _transcriptController.close();
