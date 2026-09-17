@@ -13,6 +13,8 @@ class PgColors {
   static const safe = Color(0xFF00E5A0);           // signature safe-green
   static const safeGlow = Color(0x4000E5A0);       // 25% opacity for box-shadow
   
+  static const primary = accentBlue;
+  
   static const warn = Color(0xFFF4C95D);
   static const uncertain = Color(0xFFFFB020);      // amber
   static const uncertainGlow = Color(0x40FFB020);  // 25% opacity
@@ -76,4 +78,10 @@ class PgSpace {
   static const section = 28.0;
   static const titleGap = 14.0;
   static const navBottom = 120.0;
+  
+  // Aliases for compatibility
+  static const s = PgSpacing.sm;
+  static const m = PgSpacing.md;
+  static const l = PgSpacing.lg;
+  static const xl = PgSpacing.xl;
 }

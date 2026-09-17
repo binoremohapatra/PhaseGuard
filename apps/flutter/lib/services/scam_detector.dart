@@ -578,6 +578,18 @@ class ScamDetector {
         negativeScore: negativeScore,
       );
     }
+    
+    // High legitimate score overrides single scam keyword
+    if (legitimateScore >= 3 && scamScore <= 1) {
+      return ScamResult(
+        isScam: false,
+        category: "NORMAL",
+        reasoning: "Rule-based detection: High legitimate score ($legitimateScore) overrides low scam score ($scamScore)",
+        scamScore: scamScore,
+        legitimateScore: legitimateScore,
+        negativeScore: negativeScore,
+      );
+    }
 
     // Rule-based decision
     if (scamScore >= 1) {
