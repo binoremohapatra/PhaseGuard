@@ -1,67 +1,96 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
+/// LocalSttService — On-device Speech-to-Text using speech_to_text package.
+///
+/// Uses Android's built-in SpeechRecognizer (no internet needed in offline mode).
+/// Falls back gracefully if mic permission not granted or STT unavailable.
 class LocalSttService {
   final SpeechToText _speechToText = SpeechToText();
   bool _isInitialized = false;
-  
-  final StreamController<String> _transcriptController = StreamController<String>.broadcast();
+  bool _isListening = false;
+
+  final StreamController<String> _transcriptController =
+      StreamController<String>.broadcast();
+
   Stream<String> get transcriptStream => _transcriptController.stream;
+  bool get isListening => _isListening;
+  bool get isInitialized => _isInitialized;
 
-  bool get isListening => _speechToText.isListening;
-
+  /// Initialize STT — requests mic permission and checks availability.
   Future<bool> initialize() async {
-    if (_isInitialized) return true;
-    
     try {
       _isInitialized = await _speechToText.initialize(
-        onError: (errorNotification) {
-          print('LocalSTT Error: ${errorNotification.errorMsg}');
+        onError: (error) {
+          debugPrint('LocalSTT error: ${error.errorMsg}');
+          _isListening = false;
         },
         onStatus: (status) {
-          print('LocalSTT Status: $status');
-          // Auto-restart listening if it stops but we want it to keep going
-          // Handling continuous listening can be tricky depending on OS limits
+          debugPrint('LocalSTT status: $status');
+          if (status == 'done' || status == 'notListening') {
+            _isListening = false;
+          }
         },
       );
+
+      if (_isInitialized) {
+        debugPrint('LocalSTT: ✅ Initialized successfully');
+      } else {
+        debugPrint('LocalSTT: ❌ Not available on this device');
+      }
       return _isInitialized;
     } catch (e) {
-      print('LocalSTT Init Exception: $e');
+      debugPrint('LocalSTT: Initialization error: $e');
+      _isInitialized = false;
       return false;
     }
   }
 
-  Future<void> startListening() async {
+  /// Start listening — results streamed via [transcriptStream].
+  Future<void> startListening({String localeId = 'hi_IN'}) async {
     if (!_isInitialized) {
-      final success = await initialize();
-      if (!success) return;
+      final ok = await initialize();
+      if (!ok) return;
     }
 
-    if (_speechToText.isListening) return;
+    if (_isListening) return;
 
     try {
+      _isListening = true;
       await _speechToText.listen(
         onResult: (result) {
           if (result.recognizedWords.isNotEmpty) {
             _transcriptController.add(result.recognizedWords);
           }
         },
-        listenFor: const Duration(seconds: 60),
+        localeId: localeId,
+        listenFor: const Duration(seconds: 30),
         pauseFor: const Duration(seconds: 3),
-        partialResults: true,
-        localeId: 'en_IN', // Assume Indian English for now
-        cancelOnError: true,
-        listenMode: ListenMode.dictation,
+        listenOptions: SpeechListenOptions(
+          partialResults: true,
+          cancelOnError: false,
+        ),
       );
+      debugPrint('LocalSTT: Started listening (locale: $localeId)');
     } catch (e) {
-      print('LocalSTT Listen Exception: $e');
+      debugPrint('LocalSTT: startListening error: $e');
+      _isListening = false;
     }
   }
 
+  /// Stop listening.
   Future<void> stopListening() async {
-    if (_speechToText.isListening) {
-      await _speechToText.stop();
-    }
+    if (!_isListening) return;
+    await _speechToText.stop();
+    _isListening = false;
+    debugPrint('LocalSTT: Stopped listening');
+  }
+
+  /// Get list of available locales (Hindi, English, etc.)
+  Future<List<LocaleName>> getAvailableLocales() async {
+    if (!_isInitialized) await initialize();
+    return _speechToText.locales();
   }
 
   void dispose() {

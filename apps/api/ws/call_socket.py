@@ -505,17 +505,21 @@ async def _stt_loop(call_id: str) -> None:
                 "ts": _ts(),
             })
 
-            # --- LOCAL LLM ZERO-LATENCY TRAPDOOR ---
+            # --- LOCAL LLM TRAPDOOR (Layers 1 & 2) ---
             from factcheck.local_llm import LocalScamClassifier
             local_classifier = LocalScamClassifier()
             if local_classifier.is_loaded:
                 local_prediction = await local_classifier.predict_instant_scam(transcript)
-                if local_prediction and local_prediction.get("is_scam"):
-                    logger.warning("[LOCAL LLM TRAPDOOR] Instant Scam Detected: %s", local_prediction.get("category"))
+                if local_prediction and local_prediction.get("is_confident"):
+                    is_scam = local_prediction.get("is_scam")
+                    status = "CRITICAL" if is_scam else "SAFE"
+                    prefix = "⚠️ INSTANT ALERT" if is_scam else "✅ INSTANT SAFE"
+                    
+                    logger.info(f"[LOCAL LLM] {status} Detected: {local_prediction.get('category')}")
                     
                     verdict_entry = {
-                        "status": "CRITICAL",
-                        "message": "⚠️ INSTANT ALERT (Local AI): " + local_prediction.get("reasoning", "Suspicious claim detected."),
+                        "status": status,
+                        "message": f"{prefix} (Local AI): " + local_prediction.get("reasoning", ""),
                         "evidence_urls": [],
                         "category": local_prediction.get("category", "UNKNOWN"),
                         "ts": _ts(),
@@ -525,6 +529,9 @@ async def _stt_loop(call_id: str) -> None:
                         "type": "factcheck_update",
                         **verdict_entry,
                     })
+                    
+                    # Bypass Layer 3 fact-checking
+                    continue
             # ---------------------------------------
 
             if session.state == CallState.SCAMBAITER_ACTIVE:

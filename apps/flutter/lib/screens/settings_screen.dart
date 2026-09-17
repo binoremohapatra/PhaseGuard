@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
+import 'stt_test_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -122,6 +123,49 @@ class _SettingsContentState extends State<_SettingsContent> {
               onChanged: null,
             ),
           ],
+        ),
+        const SizedBox(height: PgSpace.section),
+        // ── Developer Tools ──────────────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: const Text(
+            'Developer Tools',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: PgColors.mediumBlue,
+            ),
+          ),
+        ),
+        GlassCard(
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: PgColors.accentBlue.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: PgColors.accentBlue.withOpacity(0.3)),
+              ),
+              child: const Icon(Icons.mic_rounded, color: PgColors.lightBlue, size: 20),
+            ),
+            title: const Text(
+              'Test Local STT',
+              style: TextStyle(color: PgColors.white, fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+            subtitle: const Text(
+              'On-device Speech-to-Text (speech_to_text)',
+              style: TextStyle(color: PgColors.mediumBlue, fontSize: 11),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios_rounded,
+                size: 14, color: PgColors.mediumBlue),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SttTestScreen()),
+              );
+            },
+          ),
         ),
         const SizedBox(height: 100),
       ],

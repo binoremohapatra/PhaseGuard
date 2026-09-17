@@ -10,6 +10,7 @@ import '../state/session_controller.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
+import 'deep_test_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -789,6 +790,20 @@ class _HomeScreenState extends State<HomeScreen> {
             label: 'Test Audio Capture',
             icon: Icons.mic,
             color: PgColors.warn,
+          ),
+          const SizedBox(height: 8),
+          _buildActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const DeepTestScreen(),
+                ),
+              );
+            },
+            label: 'Deep Test Lab (Compare Models)',
+            icon: Icons.science,
+            color: Colors.purple,
           ),
         ],
         if (session.error != null) ...[

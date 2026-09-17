@@ -1,129 +1,168 @@
 import 'dart:typed_data';
 import 'dart:math';
 import 'package:fftea/fftea.dart';
+import 'package:tflite_flutter/tflite_flutter.dart';
 
 class VoiceDeepfakeDetector {
   final int sampleRate;
-  
-  // History buffers for tracking temporal anomalies
-  final List<double> _tremorHistory = [];
-  final List<double> _phaseHistory = [];
-  final List<double> _centroidHistory = [];
-  final int _maxHistoryLength = 10;
-  
+  Interpreter? _interpreter;
+  bool _isInitialized = false;
+
   VoiceDeepfakeDetector({this.sampleRate = 16000});
 
-  /// Analyzes an audio buffer to detect synthetic speech
+  Future<void> init() async {
+    if (_isInitialized) return;
+    try {
+      _interpreter = await Interpreter.fromAsset('assets/models/deepfake_detector.tflite');
+      _isInitialized = true;
+      print("Deepfake TFLite 2D CNN model loaded successfully.");
+    } catch (e) {
+      print("Failed to load Deepfake TFLite model: $e");
+    }
+  }
+
+  /// Analyzes an audio buffer using Spectrogram extraction + 2D CNN
   Map<String, dynamic> analyzeAudioBuffer(Int16List pcmData) {
+    if (!_isInitialized || _interpreter == null) {
+      init();
+      return {'is_synthetic': false, 'confidence': 0.0, 'reason': 'Model loading...'};
+    }
+
     if (pcmData.isEmpty) {
       return {'is_synthetic': false, 'confidence': 0.0, 'reason': 'Empty buffer'};
     }
 
     try {
-      // Convert Int16List to Float64List for FFT
-      Float64List floatData = Float64List(pcmData.length);
-      for (int i = 0; i < pcmData.length; i++) {
-        floatData[i] = pcmData[i] / 32768.0;
+      int targetSamples = 16000;
+      Float64List audio = Float64List(targetSamples);
+      for (int i = 0; i < targetSamples; i++) {
+        audio[i] = i < pcmData.length ? pcmData[i] / 32768.0 : 0.0;
       }
 
-      int n = 1;
-      while (n < floatData.length) n *= 2;
-      
-      Float64List paddedData = Float64List(n);
-      paddedData.setAll(0, floatData);
-      
-      final fft = FFT(n);
-      final freqDomain = fft.realFft(paddedData);
+      int nFft = 256;
+      int hopLength = 128;
+      int numFrames = 124; // (16000 - 256) / 128 + 1
+      int numBins = 129;   // 256 / 2 + 1
 
-      // --- Enhanced DSP Analysis ---
-      double lowFreqEnergy = 0.0;
-      double totalEnergy = 0.0;
-      double weightedFreqSum = 0.0;
-      double phaseDispersion = 0.0;
-      int phaseCount = 0;
+      // 1. Calculate STFT (Spectrogram)
+      final fft = FFT(nFft);
+      List<List<double>> spectrogram = List.generate(numFrames, (_) => List.filled(numBins, 0.0));
       
-      for (int i = 1; i < freqDomain.length; i++) {
-        double realPart = freqDomain[i].x;
-        double imagPart = freqDomain[i].y;
-        double magnitude = sqrt(realPart * realPart + imagPart * imagPart);
-        totalEnergy += magnitude;
-        
-        double freq = i * sampleRate / n;
-        weightedFreqSum += freq * magnitude;
-        
-        if (freq >= 8.0 && freq <= 12.0) {
-          lowFreqEnergy += magnitude;
+      double maxDb = -double.infinity;
+      double minDb = double.infinity;
+
+      for (int f = 0; f < numFrames; f++) {
+        int start = f * hopLength;
+        Float64List frame = Float64List(nFft);
+        for (int i = 0; i < nFft; i++) {
+          frame[i] = audio[start + i];
         }
+
+        final freqDomain = fft.realFft(frame);
         
-        // Phase dispersion (only for significant frequencies to avoid noise bias)
-        if (magnitude > 0.01) {
-          double prevReal = freqDomain[i-1].x;
-          double prevImag = freqDomain[i-1].y;
-          double prevPhase = atan2(prevImag, prevReal);
+        for (int b = 0; b < numBins; b++) {
+          double real = freqDomain[b].x;
+          double imag = freqDomain[b].y;
+          double mag = sqrt(real * real + imag * imag);
           
-          double currPhase = atan2(imagPart, realPart);
+          // Convert to Decibels
+          double db = 20 * (log(mag + 1e-10) / ln10);
+          spectrogram[f][b] = db;
           
-          phaseDispersion += (currPhase - prevPhase).abs();
-          phaseCount++;
+          if (db > maxDb) maxDb = db;
+          if (db < minDb) minDb = db;
         }
       }
-      
-      // Calculate instantaneous metrics
-      double tremorScore = totalEnergy > 0 ? (lowFreqEnergy / totalEnergy) : 0;
-      double avgPhaseDispersion = phaseCount > 0 ? (phaseDispersion / phaseCount) : 0;
-      double spectralCentroid = totalEnergy > 0 ? (weightedFreqSum / totalEnergy) : 0;
-      
-      // Update temporal history
-      _tremorHistory.add(tremorScore);
-      _phaseHistory.add(avgPhaseDispersion);
-      _centroidHistory.add(spectralCentroid);
-      
-      if (_tremorHistory.length > _maxHistoryLength) _tremorHistory.removeAt(0);
-      if (_phaseHistory.length > _maxHistoryLength) _phaseHistory.removeAt(0);
-      if (_centroidHistory.length > _maxHistoryLength) _centroidHistory.removeAt(0);
 
-      // Average over time for stability
-      double smoothedTremor = _tremorHistory.reduce((a, b) => a + b) / _tremorHistory.length;
-      double smoothedPhase = _phaseHistory.reduce((a, b) => a + b) / _phaseHistory.length;
+      // 2. Normalize to [0, 1]
+      double range = maxDb - minDb;
+      if (range < 1e-6) range = 1e-6;
 
-      // --- Scoring ---
-      bool isSynthetic = false;
-      double confidence = 0.0;
-      String reason = "Human-like voice detected";
-
-      // 1. Check for unnatural phase smoothness (Vocoder artifact)
-      if (_phaseHistory.length >= 5 && smoothedPhase < 1.0) {
-        isSynthetic = true;
-        confidence = 0.90;
-        reason = "Highly unnatural phase dispersion (Vocoder artifact detected)";
-      } 
-      // 2. Check for missing micro-tremors (TTS artifact)
-      // ElevenLabs often falls around 0.00005-0.00008, while humans are usually > 0.00015
-      else if (_tremorHistory.length >= 5 && smoothedTremor < 0.0001) {
-        isSynthetic = true;
-        confidence = 0.85;
-        reason = "Missing neuromuscular micro-tremors (Advanced TTS artifact)";
+      // 3. Flatten for TFLite [1, 124, 129, 1]
+      Float32List flatInput = Float32List(numFrames * numBins);
+      int idx = 0;
+      for (int f = 0; f < numFrames; f++) {
+        for (int b = 0; b < numBins; b++) {
+          flatInput[idx++] = ((spectrogram[f][b] - minDb) / range);
+        }
       }
-      // 3. Check spectral centroid anomalies (often low in muffled Deepfakes)
-      else if (spectralCentroid > 0 && spectralCentroid < 500) {
-        isSynthetic = true;
-        confidence = 0.70;
-        reason = "Abnormal spectral centroid (Muffled audio artifact)";
+
+      var input = flatInput.reshape([1, numFrames, numBins, 1]);
+      var output = List.filled(1, List.filled(1, 0.0)).reshape([1, 1]);
+
+      // 4. Run Neural Network Inference
+      _interpreter!.run(input, output);
+      double nnConfidence = output[0][0];
+
+      // 5. Calculate DSP Heuristics (Coding Solution)
+      int zeroFrames = 0;
+      List<int> dominantBins = [];
+      double silenceThreshold = 0.05; // -26dB equivalent roughly
+
+      for (int f = 0; f < numFrames; f++) {
+        double frameEnergy = 0.0;
+        double maxMag = -1.0;
+        int maxBin = 0;
+        for (int b = 0; b < numBins; b++) {
+          double val = (spectrogram[f][b] - minDb) / range;
+          frameEnergy += val;
+          if (val > maxMag) {
+            maxMag = val;
+            maxBin = b;
+          }
+        }
+        if (frameEnergy / numBins < silenceThreshold) {
+          zeroFrames++;
+        } else {
+          dominantBins.add(maxBin);
+        }
       }
+
+      double silenceRatio = zeroFrames / numFrames;
+      
+      // Calculate Pitch Variance (Jitter)
+      double variance = 0.0;
+      if (dominantBins.isNotEmpty) {
+        double meanBin = dominantBins.reduce((a, b) => a + b) / dominantBins.length;
+        double sumSq = 0.0;
+        for (int b in dominantBins) {
+          sumSq += (b - meanBin) * (b - meanBin);
+        }
+        variance = sumSq / dominantBins.length;
+      }
+
+      // Combine AI & DSP Logic
+      // 1. Unnatural Pitch Stability (Robots don't have vocal cord micro-tremors)
+      bool hasUnnaturalPitch = variance > 0.0 && variance < 8.0; 
+      // 2. Unnatural Absolute Silence (Robots don't breathe)
+      bool hasAbsoluteSilence = silenceRatio > 0.3;
+
+      double finalConfidence = nnConfidence;
+      if (nnConfidence > 0.35 && (hasUnnaturalPitch || hasAbsoluteSilence)) {
+        finalConfidence = min(1.0, nnConfidence + 0.4); // Boost to Deepfake!
+      } else if (variance > 25.0) {
+        finalConfidence = max(0.0, nnConfidence - 0.3); // High natural jitter -> Human!
+      }
+
+      bool isSynthetic = finalConfidence >= 0.5;
+      
+      String reason = isSynthetic 
+          ? "AI detected via Neural Network & DSP Acoustic Anomalies"
+          : "Natural human vocal micro-tremors detected";
 
       return {
         'is_synthetic': isSynthetic,
-        'confidence': confidence,
+        'confidence': finalConfidence,
         'reason': reason,
         'metrics': {
-          'tremor_score': smoothedTremor,
-          'phase_dispersion': smoothedPhase,
-          'spectral_centroid': spectralCentroid
+          'ai_score': nnConfidence,
+          'pitch_variance': variance,
+          'silence_ratio': silenceRatio
         }
       };
       
     } catch (e) {
-      print("Error in voice DSP analysis: \$e");
+      print("Error in Spectrogram TFLite inference: $e");
       return {'is_synthetic': false, 'confidence': 0.0, 'reason': 'Error analyzing audio'};
     }
   }

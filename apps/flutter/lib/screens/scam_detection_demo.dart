@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/realtime_scam_detection.dart';
 import '../services/audio_streaming.dart';
-import '../services/local_stt_service.dart';
+// import '../services/local_stt_service.dart';  // Gradle build issues - use backend Whisper STT
 import '../services/scam_detector.dart';
 import '../theme/tokens.dart';
 
@@ -20,7 +20,7 @@ class ScamDetectionDemo extends StatefulWidget {
 class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   final RealtimeScamDetection _scamDetection = RealtimeScamDetection();
   late final AudioStreaming _audioStreaming;
-  final LocalSttService _localSttService = LocalSttService();
+  // final LocalSttService _localSttService = LocalSttService();  // Gradle build issues - use backend Whisper STT
   
   bool _isInitialized = false;
   bool _isRecording = false;
@@ -36,15 +36,15 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   // Local DSP metrics
   double _localTremorScore = 0.0;
   double _localPhaseDispersion = 0.0;
-  
+
   // Local NLP metrics
-  String _localTranscript = '';
+  // String _localTranscript = '';  // Gradle build issues - use backend Whisper STT
   
   @override
   void initState() {
     super.initState();
     _audioStreaming = AudioStreaming(scamDetection: _scamDetection);
-    _localSttService.initialize();
+    // _localSttService.initialize();  // Gradle build issues - use backend Whisper STT
     _setupEventListeners();
     _checkPermissions();
   }
@@ -68,18 +68,18 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
     });
     
     // Listen for local offline STT transcript
-    _localSttService.transcriptStream.listen((text) {
-      setState(() {
-        _localTranscript = text;
-        
-        // Pass to ScamDetector (Keyword Rules Engine)
-        final scamResult = ScamDetector.detectScam(_localTranscript);
-        if (scamResult.isScam) {
-           _lastAlert = "LOCAL NLP ALERT: ${scamResult.reasoning}";
-           _status = 'LOCAL SCAM KEYWORDS DETECTED!';
-        }
-      });
-    });
+    // _localSttService.transcriptStream.listen((text) {  // Gradle build issues - use backend Whisper STT
+    //   setState(() {
+    //     _localTranscript = text;
+    //
+    //     // Pass to ScamDetector (Keyword Rules Engine)
+    //     final scamResult = ScamDetector.detectScam(_localTranscript);
+    //     if (scamResult.isScam) {
+    //        _lastAlert = "LOCAL NLP ALERT: ${scamResult.reasoning}";
+    //        _status = 'LOCAL SCAM KEYWORDS DETECTED!';
+    //     }
+    //   });
+    // });
     
     // Listen for general events
     _scamDetection.eventStream.listen((event) {
@@ -192,11 +192,11 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
     
     try {
       final success = await _audioStreaming.startCapture(source: _audioSource);
-      
+
       if (success) {
         // Start local STT
-        _localSttService.startListening();
-        
+        // _localSttService.startListening();  // Gradle build issues - use backend Whisper STT
+
         setState(() {
           _isRecording = true;
           _status = 'Recording & Analyzing...';
@@ -223,8 +223,8 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
   
   void _stopRecording() async {
     await _audioStreaming.stopCapture();
-    await _localSttService.stopListening();
-    
+    // await _localSttService.stopListening();  // Gradle build issues - use backend Whisper STT
+
     setState(() {
       _isRecording = false;
       _status = 'Recording stopped';
@@ -612,9 +612,7 @@ class _ScamDetectionDemoState extends State<ScamDetectionDemo> {
                             Expanded(
                               child: SingleChildScrollView(
                                 child: Text(
-                                  _localTranscript.isEmpty
-                                      ? 'Waiting for local STT...'
-                                      : _localTranscript,
+                                  'Local STT disabled due to Gradle build issues. Using backend Whisper STT (better accuracy).',
                                   style: const TextStyle(color: PgColors.white),
                                 ),
                               ),

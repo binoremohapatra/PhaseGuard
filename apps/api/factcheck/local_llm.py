@@ -1,27 +1,89 @@
 import logging
 import json
 import os
+import re
+from pathlib import Path
+import numpy as np
+import tensorflow as tf
 
 logger = logging.getLogger(__name__)
 
 class LocalScamClassifier:
     """
-    Rule-based Scam Classifier (Fast and Reliable)
+    3-Layer Scam Classifier (Keywords -> TFLite -> Web Fallback)
     """
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super(LocalScamClassifier, cls).__new__(cls)
-            cls._instance.model = None
-            cls._instance.tokenizer = None
+            cls._instance.interpreter = None
+            cls._instance.vocab = None
+            cls._instance.idf = None
+            cls._instance.vocab_size = 0
             cls._instance.is_loaded = False
         return cls._instance
 
     def load_model(self):
-        """No model loading needed for rule-based approach"""
-        logger.info("Using rule-based scam detection (no model loading required)")
-        self.is_loaded = True
+        """Load TFLite model and metadata for Layer 2"""
+        try:
+            assets_dir = Path(__file__).resolve().parent.parent.parent / "flutter" / "assets" / "models"
+            tflite_path = assets_dir / "scam_detector.tflite"
+            meta_path = assets_dir / "tflite_metadata.json"
+            
+            with open(meta_path, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+            
+            self.vocab = meta['vocabulary']
+            self.idf = meta['idf_weights']
+            self.vocab_size = meta['vocab_size']
+            
+            self.interpreter = tf.lite.Interpreter(model_path=str(tflite_path))
+            self.interpreter.allocate_tensors()
+            self.inp_det = self.interpreter.get_input_details()[0]
+            self.out_det = self.interpreter.get_output_details()[0]
+            
+            self.is_loaded = True
+            logger.info("LocalScamClassifier: Loaded TFLite model and vocabulary successfully.")
+        except Exception as e:
+            logger.error(f"Failed to load TFLite model: {e}")
+            self.is_loaded = False
+
+    def _transform_text(self, text: str) -> np.ndarray:
+        if not self.vocab or not self.idf:
+            return np.zeros(self.vocab_size, dtype=np.float32)
+            
+        text = text.lower().strip()
+        text = re.sub(r"[^\w\s\u0900-\u097f]", " ", text)
+        text = re.sub(r"\s+", " ", text)
+        tokens = [t for t in text.split() if t]
+        
+        # Unigrams + Bigrams
+        unigrams = tokens
+        bigrams = []
+        for i in range(len(tokens) - 1):
+            bigrams.append(f"{tokens[i]} {tokens[i+1]}")
+        all_tokens = unigrams + bigrams
+        
+        tf_counts = {}
+        for token in all_tokens:
+            if token in self.vocab:
+                idx = self.vocab[token]
+                tf_counts[idx] = tf_counts.get(idx, 0) + 1
+                
+        vector = np.zeros(self.vocab_size, dtype=np.float32)
+        if not tf_counts:
+            return vector
+            
+        for idx, count in tf_counts.items():
+            tf_val = 1.0 + np.log(count)
+            vector[idx] = tf_val * self.idf[idx]
+            
+        norm_val = np.linalg.norm(vector)
+        if norm_val > 0:
+            vector = vector / norm_val
+            
+        return vector
 
     async def predict_instant_scam(self, transcript: str) -> dict | None:
         scam_keywords = [
@@ -414,7 +476,27 @@ class LocalScamClassifier:
             "પાસવર્ડ", "એટીએમ કાર્ડ", "ઓટીપી",
             "ગુંતવનિકી સ્કીમ", "ગુંતવ", "મળો", "સરકારારી યોજના",
             "લોટરી", "જીત્યો", "પ્રોસેસિંગ ફી",
-            "ઇન્શ્યરન્સ પાલિસી", "રદ્દુ", "ચૂલવંડી", "પાલીશ"
+            "ઇન્શ્યરન્સ પાલિસી", "રદ્દુ", "ચૂલવંડી", "પાલીશ",
+            # Missing: ELECTRICITY THREAT (bijli kategi update + pay link)
+            "update karein bijli", "update meter", "electricity update", "bijli update",
+            "abhi update karo", "tonight bijli", "aaj raat bijli", "bijli kategi update",
+            # Missing: INTERNAL AUDIT PHISHING
+            "internal audit", "confirm your account number", "confirm account for audit",
+            "routine audit", "account audit", "verification audit",
+            # Missing: AUTHORITY SCAM (cyber crime dept + complaint)
+            "received a complaint against your number", "complaint against your number",
+            "cyber crime department", "cyber crime cell", "complaint filed against",
+            "statement required from you", "don't disconnect", "just a statement",
+            # Missing: FD MATURITY INVESTMENT FRAUD
+            "fd maturity", "reinvest karna chahenge", "fd reinvest", "maturity reinvest",
+            "guaranteed returns of 12", "guaranteed 12%", "12% per year",
+            "new scheme with guaranteed", "our naya scheme", "ek naya scheme",
+            # Drug trafficking / SIM misuse
+            "drug trafficking", "sim used for drug", "sim activate for", "sim linked to drug",
+            "cbi custody", "2 lakh bhejo", "custody mein aana",
+            # LOAN SCAM - CIBIL
+            "cibil score", "pre-approved personal loan", "no documents", "bas otp share",
+            "pre-approved loan", "loan without documents"
         ]
         
         legitimate_indicators = [
@@ -507,6 +589,8 @@ class LocalScamClassifier:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Legitimate account freeze requiring branch visit"
             }
         
@@ -515,6 +599,8 @@ class LocalScamClassifier:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Legitimate callback scenario with verification"
             }
         
@@ -524,6 +610,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate bank service call - informational only"
                 }
         
@@ -534,6 +622,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Callback scenario - user initiated contact first"
                 }
         
@@ -543,6 +633,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate verification - only DOB requested"
                 }
         
@@ -552,6 +644,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate callback verification - only DOB requested"
                 }
         
@@ -561,6 +655,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate bank callback - DOB verification for statement inquiry"
                 }
         
@@ -570,6 +666,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate maintenance notification - no action required"
                 }
         
@@ -579,6 +677,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Punjabi legitimate call - free service, no money needed"
                 }
         
@@ -587,6 +687,8 @@ class LocalScamClassifier:
             return {
                 "category": "SCAM_DETECTED",
                 "is_scam": True,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Multi-step scam - survey followed by FD opening request"
             }
         
@@ -595,6 +697,8 @@ class LocalScamClassifier:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Legitimate SIM info - blocked unauthorized SIMs, no action needed"
             }
         
@@ -607,6 +711,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate delivery call - no payment demand"
                 }
         
@@ -615,6 +721,8 @@ class LocalScamClassifier:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Legitimate bank statement notification"
             }
         
@@ -624,6 +732,8 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate complaint follow-up - no payment demand"
                 }
         
@@ -633,14 +743,25 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate appointment reminder - no payment"
                 }
         
-        # (E) Family/friend casual conversation
-        if any(w in transcript_lower for w in ["football match", "dinner mein rakhna", "kya haal hai", "sham ko", "report by eod", "review it tomorrow", "running late", "traffic"]):
+        # (E) Family/friend casual conversation — GUARD: must have zero scam score to fire
+        # NOTE: use precise multi-word phrases to avoid substring false matches
+        # e.g. "traffic" would match "drug trafficking" — use "stuck in traffic" instead
+        casual_phrases = [
+            "football match", "dinner mein rakhna", "kya haal hai", "sham ko",
+            "report by eod", "review it tomorrow", "running late for", "stuck in traffic",
+            "chai peene aao", "kya chal raha", "kab miloge", "aaj lunch",
+        ]
+        if scam_score == 0 and any(w in transcript_lower for w in casual_phrases):
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Casual personal conversation - no scam indicators"
             }
         
@@ -651,6 +772,8 @@ class LocalScamClassifier:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": "Low scam score with strong safe context - legitimate notification"
             }
         
@@ -662,12 +785,16 @@ class LocalScamClassifier:
                 return {
                     "category": "NORMAL",
                     "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Legitimate service - payment at delivery, no advance"
                 }
             elif "pay" in transcript_lower or "transfer" in transcript_lower or "payment" in transcript_lower:
                 return {
                     "category": "SCAM_DETECTED",
                     "is_scam": True,
+                "is_confident": True,
+                "layer": "keyword",
                     "reasoning": "Multi-step scam - trust building followed by payment request"
                 }
         
@@ -679,32 +806,83 @@ class LocalScamClassifier:
                     return {
                         "category": "SCAM_DETECTED",
                         "is_scam": True,
+                "is_confident": True,
+                "layer": "keyword",
                         "reasoning": "Suspicious: claims to be anti-scam but asks for card/account details"
                     }
             return {
                 "category": "NORMAL",
                 "is_scam": False,
+                "is_confident": True,
+                "layer": "keyword",
                 "reasoning": f"Rule-based detection: {negative_score} negative indicators override {scam_score} scam indicators"
             }
         
-        # Rule-based decision
-        if scam_score >= 1:
+        # ==========================================
+        # LAYER 1: Keyword-based Decision
+        # ==========================================
+        if scam_score >= 3:
             return {
                 "category": "SCAM_DETECTED",
                 "is_scam": True,
-                "reasoning": f"Rule-based detection: {scam_score} scam indicators found"
+                "is_confident": True,
+                "layer": "keyword",
+                "reasoning": f"Layer 1 (Keyword): Strong detection ({scam_score} scam indicators)"
             }
-        elif legitimate_score >= 2:
+        elif scam_score == 0 and legitimate_score >= 2:
             return {
                 "category": "NORMAL",
                 "is_scam": False,
-                "reasoning": f"Rule-based detection: {legitimate_score} legitimate indicators found"
+                "is_confident": True,
+                "layer": "keyword",
+                "reasoning": f"Layer 1 (Keyword): Confirmed safe ({legitimate_score} legitimate indicators)"
             }
+            
+        # ==========================================
+        # LAYER 2: TFLite Model Decision
+        # ==========================================
+        if self.is_loaded and self.interpreter:
+            try:
+                vector = self._transform_text(transcript)
+                sample = np.expand_dims(vector, axis=0)
+                
+                self.interpreter.set_tensor(self.inp_det["index"], sample)
+                self.interpreter.invoke()
+                ml_score = self.interpreter.get_tensor(self.out_det["index"])[0][0]
+                
+                if ml_score > 0.70:
+                    return {
+                        "category": "SCAM_DETECTED",
+                        "is_scam": True,
+                        "is_confident": True,
+                        "layer": "tflite",
+                        "reasoning": f"Layer 2 (TFLite): High confidence scam ({(ml_score * 100):.1f}%)"
+                    }
+                elif ml_score < 0.30:
+                    return {
+                        "category": "NORMAL",
+                        "is_scam": False,
+                        "is_confident": True,
+                        "layer": "tflite",
+                        "reasoning": f"Layer 2 (TFLite): High confidence safe ({((1 - ml_score) * 100):.1f}%)"
+                    }
+                else:
+                    return {
+                        "category": "UNKNOWN",
+                        "is_scam": bool(ml_score >= 0.5),
+                        "is_confident": False,
+                        "layer": "tflite_fallback",
+                        "reasoning": f"Layer 2 (TFLite): Uncertain (score={ml_score:.2f}). Needs Web verification."
+                    }
+            except Exception as e:
+                logger.error(f"Error during TFLite inference: {e}")
         
-        # Conservative fallback
+        # Fallback if model not loaded or inference failed
         return {
             "category": "UNKNOWN",
             "is_scam": scam_score > 0,
-            "reasoning": f"Ambiguous: {scam_score} scam, {legitimate_score} legitimate, {negative_score} negative indicators"
+            "is_confident": False,
+            "layer": "fallback",
+            "reasoning": f"Ambiguous: {scam_score} scam, {legitimate_score} legit indicators. Needs Web verification."
         }
 
