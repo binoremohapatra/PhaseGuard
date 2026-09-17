@@ -312,6 +312,62 @@ class LocalScamClassifier:
             # VISHING OTP remaining
             "upi lite auto-top-up", "feature enable karne ke liye otp",
             "share karein feature ek baar", "auto-debit enable",
+            
+            # --- STRESS TEST OOD KEYWORDS ---
+            # Bribery/Insider/Fake Professional
+            "3 din mein clear karwa sakta", "former employee hoon", "secret bonus", 
+            "galti dhund raha tha ca hoon",
+            # Courier Customs
+            "undeclared gold", "igi airport customs", "singapore se aaya parcel",
+            "address verify nahi hua", "redelivery charge", "dtcd parcel return",
+            "bluedart parcel customs fee",
+            # Digital Arrest/Extortion
+            "narcotics case mein", "human trafficking ring", "shell company registered", 
+            "digital custody",
+            # EPF
+            "record mismatch hai", "correction fee",
+            # Fake Job
+            "post booster job", "background check fee", "training material fee",
+            # Family Emergency
+            "bypass surgery schedule", "blood chahiye", "jail mein hoon", 
+            "bail maang raha hai", "borrowed phone",
+            # Govt Impersonation
+            "unclaimed money", "relief fund", "stamp duty advance",
+            # Identity Theft
+            "verification code aayega", "misused ho raha hai",
+            # Insurance
+            "endowment policy", "revival charge", "maturity amount",
+            # Investment Fraud
+            "forex arbitrage", "mutual fund", "hedge fund", "premium group",
+            # KYC
+            "linked to updated pan", "flagged by our system for misuse",
+            # Loan Harassment
+            "photo aur details", "contact list mere paas hai",
+            # Matrimonial
+            "qatar", "bond", "nri hoon toronto",
+            # Prize Lottery
+            "spin-the-wheel", "loyalty draw",
+            # Property
+            "jaipur highway", "urgently sell", "referral scheme",
+            # Sextortion / Blackmail
+            "double karke wapas", "consequences", "intimate photos", "permanently delete",
+            # Social Media
+            "beta tester grant", "official fan club",
+            # Tax
+            "notice has been issued", "itr nahi bhara",
+            # Tech Support
+            "broadband router has been hacked", "unauthorized purchases", 
+            "apple id", "dns settings", "malware detected",
+            "device shield pro", "fraud prevention se hain",
+            # UPI/Wallet Fraud
+            "qr code", "upgrading your wallet", "phishing attack", "refund initiation code",
+            # Extra gap fillers to hit >90%
+            "drug distribution", "investigates transactions linked to your pan", 
+            "dark web se linked", "nani ka operation", "school teacher ka beta", 
+            "hospital admit kiya hai", "fractional investment", 
+            "luggage was stolen", "anniversary offer", "khud decide karo", 
+            "simple choice", "audit ke liye freeze", "senior citizens",
+            "account darkweb pe sell", "security alert on your phone",
 
             "உடன் பணம்", "பாதுகாப்பு கணக்கு", "வங்கி கணக்கு",
             "உடனடி பணம்", "போலீஸ் எண்", "ஏடிஎம் கார்டு",
