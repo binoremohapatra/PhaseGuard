@@ -215,7 +215,7 @@ async def _hf_ml_loop(call_id: str) -> None:
     window_n = int(3.0 * cfg.sample_rate)
     cadence = 3.0
 
-    from dsp.hf_ml import analyze_audio_hf
+    from dsp.local_ml import analyze_audio_local
 
     logger.debug("hf_ml_loop started: call_id=%r window=%d cadence=%.1fs",
                  call_id, window_n, cadence)
@@ -227,7 +227,8 @@ async def _hf_ml_loop(call_id: str) -> None:
                 await asyncio.sleep(cadence / 2)
                 continue
 
-            result = await analyze_audio_hf(window, fs=cfg.sample_rate)
+            # --- HF ML API (Offline) ---
+            result = await analyze_audio_local(window, fs=cfg.sample_rate)
             
             if result.get("status") == "success":
                 await manager.send_json(call_id, {
