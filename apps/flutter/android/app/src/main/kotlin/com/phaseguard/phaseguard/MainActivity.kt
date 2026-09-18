@@ -1,6 +1,7 @@
 package com.phaseguard.phaseguard
 
 import android.app.Activity
+import android.app.role.RoleManager
 import android.content.Context
 import android.content.Intent
 import android.media.AudioFormat
@@ -23,18 +24,21 @@ import kotlinx.coroutines.launch
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.EventChannel
-import kotlinx.coroutines.launch
 import java.nio.ByteBuffer
 
 class MainActivity : FlutterActivity() {
     private val TAG = "ScreenAudioCapture"
     private val CHANNEL = "phaseguard/screen_audio"
     private val BLUETOOTH_CHANNEL = "phaseguard/bluetooth_sco"
+    private val DIALER_CHANNEL = "phaseguard/dialer"
+    private val INCALL_CHANNEL = "phaseguard/incall_service"
     
     private var mediaProjectionManager: MediaProjectionManager? = null
     private var sampleRate = 16000
     private var methodChannel: MethodChannel? = null
     private var bluetoothMethodChannel: MethodChannel? = null
+    private var dialerMethodChannel: MethodChannel? = null
+    private var inCallMethodChannel: MethodChannel? = null
     
     private var isCapturing = false
     
@@ -46,6 +50,9 @@ class MainActivity : FlutterActivity() {
     
     // TelecomManager for call handling
     private var telecomManager: TelecomManager? = null
+    
+    // Pending result for role/dialer request
+    private var pendingDialerResult: MethodChannel.Result? = null
     
     // Coroutine scope for async operations
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -97,6 +104,48 @@ class MainActivity : FlutterActivity() {
         }
     }
     
+    /**
+     * Checks whether PhaseGuard is currently the default phone/dialer app.
+     */
+    private fun isDefaultDialer(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val roleManager = getSystemService(Context.ROLE_SERVICE) as? RoleManager
+            roleManager?.isRoleHeld(RoleManager.ROLE_DIALER) == true
+        } else {
+            val tm = telecomManager ?: return false
+            packageName == tm.defaultDialerPackage
+        }
+    }
+    
+    /**
+     * Requests that the system prompt the user to set PhaseGuard as the default dialer.
+     * On Android 10+ (Q) this uses the RoleManager API; on older versions it falls back to
+     * TelecomManager.ACTION_CHANGE_DEFAULT_DIALER.
+     */
+    private fun requestDefaultDialer(result: MethodChannel.Result) {
+        if (isDefaultDialer()) {
+            result.success(mapOf("alreadyDefault" to true, "requested" to false))
+            return
+        }
+        pendingDialerResult = result
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val roleManager = getSystemService(Context.ROLE_SERVICE) as RoleManager
+                val intent = roleManager.createRequestRoleIntent(RoleManager.ROLE_DIALER)
+                startActivityForResult(intent, REQUEST_DEFAULT_DIALER_CODE)
+            } else {
+                val intent = Intent(TelecomManager.ACTION_CHANGE_DEFAULT_DIALER).apply {
+                    putExtra(TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, packageName)
+                }
+                startActivityForResult(intent, REQUEST_DEFAULT_DIALER_CODE)
+            }
+        } catch (e: Exception) {
+            pendingDialerResult = null
+            Log.e(TAG, "Error requesting default dialer: ${e.message}")
+            result.error("DIALER_ERROR", "Failed to request default dialer: ${e.message}", null)
+        }
+    }
+    
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
@@ -105,6 +154,33 @@ class MainActivity : FlutterActivity() {
         
         // Set flutter messenger for InCallService
         PhaseGuardInCallService.setFlutterMessenger(flutterEngine.dartExecutor.binaryMessenger)
+        
+        // --- Dialer Channel ---
+        dialerMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DIALER_CHANNEL)
+        dialerMethodChannel?.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isDefaultDialer" -> result.success(isDefaultDialer())
+                "requestDefaultDialer" -> requestDefaultDialer(result)
+                else -> result.notImplemented()
+            }
+        }
+        
+        // --- InCall Service Control Channel ---
+        inCallMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, INCALL_CHANNEL)
+        inCallMethodChannel?.setMethodCallHandler { call, result ->
+            val service = PhaseGuardInCallService.getInstance()
+            if (service == null) {
+                result.error("NO_SERVICE", "InCallService is not active", null)
+                return@setMethodCallHandler
+            }
+            when (call.method) {
+                "answerCall" -> result.success(service.answerCall())
+                "rejectCall" -> result.success(service.rejectCall())
+                "disconnectCall" -> result.success(service.disconnectCall())
+                "hasActiveCall" -> result.success(service.getCurrentCall() != null)
+                else -> result.notImplemented()
+            }
+        }
         
         // Initialize Bluetooth SCO capture
         bluetoothScoCapture = BluetoothScoCapture()
@@ -297,32 +373,45 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         
-        if (requestCode == SCREEN_CAPTURE_REQUEST_CODE) {
-            val result = pendingResult
-            pendingResult = null
-            
-            if (resultCode == Activity.RESULT_OK && data != null) {
-                try {
-                    val intent = Intent(this, ScreenCaptureService::class.java).apply {
-                        putExtra("RESULT_CODE", resultCode)
-                        putExtra("DATA_INTENT", data)
-                        putExtra("SAMPLE_RATE", sampleRate)
+        when (requestCode) {
+            SCREEN_CAPTURE_REQUEST_CODE -> {
+                val result = pendingResult
+                pendingResult = null
+                
+                if (resultCode == Activity.RESULT_OK && data != null) {
+                    try {
+                        val intent = Intent(this, ScreenCaptureService::class.java).apply {
+                            putExtra("RESULT_CODE", resultCode)
+                            putExtra("DATA_INTENT", data)
+                            putExtra("SAMPLE_RATE", sampleRate)
+                        }
+                        
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            startForegroundService(intent)
+                        } else {
+                            startService(intent)
+                        }
+                        
+                        isCapturing = true
+                        result?.success(true)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error starting ScreenCaptureService: ${e.message}")
+                        result?.success(false)
                     }
-                    
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        startForegroundService(intent)
-                    } else {
-                        startService(intent)
-                    }
-                    
-                    isCapturing = true
-                    result?.success(true)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error starting ScreenCaptureService: ${e.message}")
+                } else {
                     result?.success(false)
                 }
-            } else {
-                result?.success(false)
+            }
+            REQUEST_DEFAULT_DIALER_CODE -> {
+                val result = pendingDialerResult
+                pendingDialerResult = null
+                val isNowDefault = isDefaultDialer()
+                Log.d(TAG, "Default dialer result: resultCode=$resultCode, isDefault=$isNowDefault")
+                result?.success(mapOf(
+                    "alreadyDefault" to false,
+                    "requested" to true,
+                    "granted" to (resultCode == Activity.RESULT_OK || isNowDefault)
+                ))
             }
         }
     }
@@ -399,5 +488,6 @@ class MainActivity : FlutterActivity() {
     
     companion object {
         private const val SCREEN_CAPTURE_REQUEST_CODE = 1001
+        private const val REQUEST_DEFAULT_DIALER_CODE = 1002
     }
 }

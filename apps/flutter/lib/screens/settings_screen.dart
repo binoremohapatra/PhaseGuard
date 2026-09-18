@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/incall_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
@@ -44,6 +45,36 @@ class _SettingsContentState extends State<_SettingsContent> {
   bool deepfakeDetection = true;
   bool voiceAuth = true;
   bool factChecking = true;
+
+  // ── Default Dialer state ─────────────────────────────────────────────────
+  final _inCallService = InCallService();
+  bool? _isDefaultDialer; // null = checking, true/false = result
+  bool _isRequesting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDefaultDialer();
+  }
+
+  @override
+  void dispose() {
+    _inCallService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkDefaultDialer() async {
+    final result = await _inCallService.isDefaultDialer();
+    if (mounted) setState(() => _isDefaultDialer = result);
+  }
+
+  Future<void> _requestDefaultDialer() async {
+    setState(() => _isRequesting = true);
+    await _inCallService.requestDefaultDialer();
+    // Re-check after user interacts with the system dialog
+    await _checkDefaultDialer();
+    if (mounted) setState(() => _isRequesting = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +137,11 @@ class _SettingsContentState extends State<_SettingsContent> {
             ),
           ],
         ),
+        const SizedBox(height: PgSpace.section),
+        // ── Call Permissions ─────────────────────────────────────────────────
+        _buildSectionLabel('Call Permissions'),
+        const SizedBox(height: 12),
+        _buildDefaultDialerCard(),
         const SizedBox(height: PgSpace.section),
         _buildSettingsGroup(
           title: 'About',
@@ -172,10 +208,141 @@ class _SettingsContentState extends State<_SettingsContent> {
     );
   }
 
+  Widget _buildSectionLabel(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 0),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w600,
+          color: PgColors.mediumBlue,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultDialerCard() {
+    final isDefault = _isDefaultDialer;
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: PgColors.accentBlue.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: PgColors.accentBlue.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(Icons.phone_in_talk_rounded, color: PgColors.lightBlue, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text('Default Phone App',
+                        style: TextStyle(color: PgColors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    SizedBox(height: 2),
+                    Text('Required for InCallService & call control',
+                        style: TextStyle(color: PgColors.mediumBlue, fontSize: 11)),
+                  ],
+                ),
+              ),
+              _buildStatusBadge(isDefault),
+            ],
+          ),
+          if (isDefault != true) ...[
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _isRequesting ? null : _requestDefaultDialer,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: PgColors.accentBlue,
+                  foregroundColor: PgColors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                icon: _isRequesting
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: PgColors.white))
+                    : const Icon(Icons.verified_user_rounded, size: 16),
+                label: Text(
+                  _isRequesting ? 'Opening\u2026' : 'Make PhaseGuard Default Dialer',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ),
+          ],
+          if (isDefault == true) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C896).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF00C896).withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Color(0xFF00C896), size: 14),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'PhaseGuard can now answer and reject calls programmatically.',
+                      style: TextStyle(color: Color(0xFF00C896), fontSize: 11),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(bool? isDefault) {
+    if (isDefault == null) {
+      return const SizedBox(
+          width: 16, height: 16,
+          child: CircularProgressIndicator(strokeWidth: 2, color: PgColors.mediumBlue));
+    }
+    if (isDefault) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xFF00C896).withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFF00C896).withValues(alpha: 0.4)),
+        ),
+        child: const Text('Active',
+            style: TextStyle(color: Color(0xFF00C896), fontSize: 10, fontWeight: FontWeight.w700)),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.orange.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.4)),
+      ),
+      child: const Text('Not Set',
+          style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.w700)),
+    );
+  }
+
   Widget _buildSettingsGroup({
     required String title,
     required List<_SettingItem> items,
   }) {
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

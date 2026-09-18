@@ -15,10 +15,28 @@ class PhaseGuardInCallService : InCallService() {
         private var flutterMessenger: DartExecutor.BinaryMessenger? = null
         private var methodChannel: MethodChannel? = null
         
+        // Singleton so MainActivity can call answerCall/rejectCall/disconnectCall
+        private var instance: PhaseGuardInCallService? = null
+        fun getInstance(): PhaseGuardInCallService? = instance
+        
         fun setFlutterMessenger(messenger: DartExecutor.BinaryMessenger) {
             flutterMessenger = messenger
+            // Outbound channel: native → Flutter (call events)
             methodChannel = MethodChannel(messenger, "phaseguard/incall_service")
+            // Inbound control (answerCall etc.) is handled in MainActivity.configureFlutterEngine
         }
+    }
+    
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+        Log.d(TAG, "PhaseGuardInCallService created")
+    }
+    
+    override fun onDestroy() {
+        super.onDestroy()
+        instance = null
+        Log.d(TAG, "PhaseGuardInCallService destroyed")
     }
     
     override fun onCallAdded(call: Call) {
@@ -30,8 +48,9 @@ class PhaseGuardInCallService : InCallService() {
         call.registerCallback(callCallback)
         
         // Notify Flutter about the incoming call
+        val phoneNumber = runCatching { call.details.handle?.schemeSpecificPart }.getOrNull() ?: ""
         methodChannel?.invokeMethod("onCallAdded", mapOf(
-            "phoneNumber" to call.details.handle.schemeSpecificPart,
+            "phoneNumber" to phoneNumber,
             "callState" to call.details.state.toString()
         ))
     }
@@ -54,10 +73,11 @@ class PhaseGuardInCallService : InCallService() {
             super.onStateChanged(call, state)
             Log.d(TAG, "Call state changed: $state")
             
+            val phoneNumber = runCatching { call.details.handle?.schemeSpecificPart }.getOrNull() ?: ""
             // Notify Flutter about state changes
             methodChannel?.invokeMethod("onCallStateChanged", mapOf(
                 "state" to state,
-                "phoneNumber" to call.details.handle.schemeSpecificPart
+                "phoneNumber" to phoneNumber
             ))
         }
     }
