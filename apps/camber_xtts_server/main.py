@@ -12,6 +12,14 @@ app = FastAPI(title="PhaseGuard Voice Cloning API", description="XTTSv2 GPU Serv
 # We use XTTS-v2 because it only needs a 3-second reference audio to clone a voice perfectly.
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Loading XTTSv2 model on {device}...")
+
+# Fix Matplotlib GUI crash
+os.environ['MPLBACKEND'] = 'Agg'
+# Bypass Coqui TOS interactive prompt
+import TTS.utils.manage
+def mock_ask_tos(path): return True
+TTS.utils.manage.ask_tos = mock_ask_tos
+
 tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 print("Model loaded successfully!")
 
