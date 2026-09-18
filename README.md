@@ -13,7 +13,7 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 - **Mobile:** Flutter (Android) with advanced ML detection
 - **Web:** Next.js 16.3.2 dashboard
 - **AI/ML:** Groq LLM (Whisper STT, Llama analysis)
-- **Voice:** gTTS Hindi speech synthesis
+- **Voice:** Fish Audio S2.1 Pro Free (voice cloning + TTS), gTTS fallback
 - **Detection:** Rule-based + Advanced ML patterns
 - **Deployment:** Render cloud (backend), Local development (mobile)
 
@@ -70,6 +70,9 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 - `GET /call/{id}/status` - Current call state
 - `POST /call/{id}/escalate/draft` - Draft escalation
 - `GET /health` - Health check
+- `POST /api/v1/voice/tts` - Text-to-speech synthesis
+- `POST /api/v1/voice/enroll` - Voice enrollment for cloning
+- `GET /api/v1/voice/health` - Voice service health check
 
 ---
 
@@ -295,8 +298,13 @@ SERPER_API_KEY=your_key_here
 TAVILY_API_KEY=your_key_here
 
 # TTS Configuration
-TTS_BACKEND=gtts
+TTS_BACKEND=fish  # Options: gtts, fish, mock, xtts
 TTS_LANGUAGE=hi
+
+# Fish Audio (Voice Cloning + TTS)
+FISH_API_KEY=your_fish_api_key_here
+FISH_MODEL=s2.1-pro-free
+FISH_BASE_URL=https://api.fish.audio
 
 # DSP Configuration
 DSP_VOICE_DETECTION_ENABLED=false
@@ -304,6 +312,108 @@ DSP_VOICE_DETECTION_ENABLED=false
 # Ingestion Mode
 INGESTION_MODE=browser_mic
 ```
+
+---
+
+## 🎙️ Fish Audio Integration
+
+### Overview
+PhaseGuard integrates Fish Audio S2.1 Pro Free for:
+- **Text-to-Speech (TTS):** High-quality speech synthesis
+- **Voice Cloning:** Create custom voices from short audio samples (10-30 seconds)
+- **Low Latency:** Sub-300ms streaming for real-time conversation
+
+### Setup
+1. **Get API Key:**
+   - Visit https://fish.audio/developers/
+   - Sign up for free (no credit card required)
+   - Get your API key from the dashboard
+
+2. **Configure Environment:**
+   ```bash
+   # In apps/api/.env
+   FISH_API_KEY=sk-fish-your-key-here
+   FISH_MODEL=s2.1-pro-free
+   FISH_BASE_URL=https://api.fish.audio
+   TTS_BACKEND=fish
+   ```
+
+3. **Start Backend:**
+   ```bash
+   cd apps/api
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### API Usage
+
+#### Text-to-Speech
+```bash
+curl -X POST http://localhost:8000/api/v1/voice/tts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "Hello from PhaseGuard",
+    "format": "mp3",
+    "provider": "fish"
+  }' \
+  --output speech.mp3
+```
+
+#### Voice Enrollment (Cloning)
+```bash
+curl -X POST http://localhost:8000/api/v1/voice/enroll \
+  -F "audio=@voice_sample.wav" \
+  -F "display_name=My Voice" \
+  -F "enhance_quality=true"
+```
+
+#### TTS with Cloned Voice
+```bash
+curl -X POST http://localhost:8000/api/v1/voice/tts \
+  -H "Content-Type: application/json" \
+  -d '{
+    "text": "This is my cloned voice",
+    "voice_id": "your-voice-profile-id",
+    "format": "mp3",
+    "provider": "fish"
+  }' \
+  --output cloned_speech.mp3
+```
+
+#### Health Check
+```bash
+curl http://localhost:8000/api/v1/voice/health
+```
+
+### Flutter Integration
+The Flutter app includes voice API methods in `ApiClient`:
+```dart
+// Enroll a voice
+final result = await apiClient.enrollVoice(
+  displayName: "My Voice",
+  audioBytes: audioFileBytes,
+);
+
+// Synthesize speech
+final audio = await apiClient.synthesize(
+  text: "Hello",
+  voiceId: voiceProfileId,
+);
+
+// List voices
+final voices = await apiClient.listVoices();
+```
+
+### Security Notes
+- **Never commit** your Fish API key to version control
+- **Use environment variables** for all credentials
+- **Rotate keys** if exposed
+- The API key is server-side only — never exposed to the Flutter client
+
+### Limitations
+- Voice cloning requires 10-30 seconds of clear audio
+- Free tier has usage limits (check Fish Audio pricing)
+- Latency depends on network conditions (sub-300ms target)
+- Voice profiles are stored in-memory (extend to database for persistence)
 
 ---
 

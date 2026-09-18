@@ -63,10 +63,19 @@ _bearer = HTTPBearer(auto_error=False)
 async def lifespan(app: FastAPI):
     """Startup: pre-warm the executor. Shutdown: drain it cleanly."""
     logger.info("PhaseGuard API starting up…")
-    
+
     from core.config import get_settings
     get_settings().log_startup_summary()
-    
+
+    # Initialize database
+    try:
+        from database import init_db, create_tables
+        init_db()
+        await create_tables()
+        logger.info("Database initialized and tables created")
+    except Exception as e:
+        logger.warning(f"Database initialization failed: {e} - continuing without database")
+
     # Try to load local ML model (optional - disabled by design in favor of backend services)
     try:
         from factcheck.local_llm import LocalScamClassifier
@@ -75,7 +84,7 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Local ML model import failed (expected): {e} - using backend services instead")
     except Exception as e:
         logger.warning(f"Local ML model loading failed: {e} - using backend services instead")
-    
+
     get_executor()  # Pre-create the ThreadPoolExecutor
     yield
     logger.info("PhaseGuard API shutting down…")
@@ -126,6 +135,13 @@ app.include_router(ws_router)
 try:
     from channels.whatsapp_scanner import router as whatsapp_router
     app.include_router(whatsapp_router)
+except ImportError:
+    pass
+
+# Include Voice/TTS router
+try:
+    from voice.router import router as voice_router
+    app.include_router(voice_router)
 except ImportError:
     pass
 

@@ -68,10 +68,21 @@ class Settings(BaseSettings):
     jina_api_key: str = Field(default="", description="Jina AI API key")
 
     # ── TTS Backend ────────────────────────────────────────────────────────────
-    tts_backend: str = Field(default="gtts", description="TTS backend (gtts | mock | xtts)")
+    tts_backend: str = Field(default="gtts", description="TTS backend (gtts | mock | xtts | fish)")
     tts_language: str = Field(default="hi", description="TTS language")
     elevenlabs_api_key: str = Field(default="", description="Optional ElevenLabs API key")
     elevenlabs_voice_id: str = Field(default="", description="Optional ElevenLabs Voice ID")
+
+    # ── Fish Audio (TTS + Voice Cloning) ───────────────────────────────────────
+    fish_api_key: str = Field(default="", description="Fish Audio API key")
+    fish_model: str = Field(default="s2.1-pro-free", description="Fish Audio model (s2.1-pro-free, s2.1-pro, s1)")
+    fish_base_url: str = Field(default="https://api.fish.audio", description="Fish Audio API base URL")
+
+    # ── Database (PostgreSQL for voice profile persistence) ───────────────────
+    database_url: str = Field(
+        default="postgresql+asyncpg://user:password@localhost/phaseguard",
+        description="PostgreSQL database URL (asyncpg driver for async support)"
+    )
 
     # ── WhatsApp (text scanner) ────────────────────────────────────────────────
     whatsapp_phone_number_id: str = Field(default="")
@@ -224,6 +235,13 @@ class Settings(BaseSettings):
             print("  [WARN] NewsAPI (Threat Intel): NOT CONFIGURED (add NEWSAPI_KEY)")
 
         print(f"\n[OK] TTS Backend: ACTIVE ({self.tts_backend})")
+
+        if self.tts_backend == "fish":
+            if self.fish_api_key:
+                print(f"[OK] Fish Audio TTS: ACTIVE (model={self.fish_model})")
+            else:
+                print("[WARN] Fish Audio TTS: NOT CONFIGURED (add FISH_API_KEY)")
+
         print("[OK] Company Verification (WHOIS + MCA link + public-presence check): ACTIVE")
 
         if self.whatsapp_access_token and self.whatsapp_phone_number_id:

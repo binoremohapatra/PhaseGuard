@@ -62,3 +62,8 @@ opencv-python-headless==4.10.0.84
 gTTS==2.5.4
 python-whois==0.9.4
 TTS>=0.22.0
+
+# ── Database (PostgreSQL for voice profile persistence) ─────────────────────
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.36
+alembic==1.14.0

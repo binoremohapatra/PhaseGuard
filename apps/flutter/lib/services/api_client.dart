@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import '../models/protocol.dart';
 
 /// Same production host the React Native client uses.
+
+/// Same production host the React Native client uses.
 class ApiClient {
   ApiClient({this.baseUrl = 'https://phaseguard.onrender.com'});
 
@@ -200,11 +202,114 @@ class ApiClient {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  // ── Voice/TTS API Methods ─────────────────────────────────────────────────────
+
+  /// Enroll a voice sample for cloning
+  Future<Map<String, dynamic>> enrollVoice({
+    required String displayName,
+    required List<int> audioBytes,
+    String fileName = 'voice_sample.wav',
+    bool enhanceQuality = true,
+  }) async {
+    final request = http.MultipartRequest('POST', Uri.parse('$baseUrl/api/v1/voice/enroll'));
+    request.files.add(http.MultipartFile.fromBytes(
+      'audio',
+      audioBytes,
+      filename: fileName,
+    ));
+    request.fields['display_name'] = displayName;
+    request.fields['enhance_quality'] = enhanceQuality.toString();
+
+    final res = await request.send();
+    final body = await res.stream.bytesToString();
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detailFromJson(body) ?? 'Voice enrollment failed');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  /// Synthesize text to speech
+  Future<List<int>> synthesize({
+    required String text,
+    String? voiceId,
+    String format = 'mp3',
+    String provider = 'fish',
+  }) async {
+    final body = <String, dynamic>{
+      'text': text,
+      'format': format,
+      'provider': provider,
+    };
+    if (voiceId != null) {
+      body['voice_id'] = voiceId;
+    }
+
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/v1/voice/tts'),
+      headers: _headers(),
+      body: jsonEncode(body),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'TTS synthesis failed');
+    }
+    return res.bodyBytes;
+  }
+
+  /// List enrolled voice profiles
+  Future<List<Map<String, dynamic>>> listVoices() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/v1/voice/voices'),
+      headers: _headers(),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'List voices failed');
+    }
+    final body = jsonDecode(res.body) as List;
+    return body.cast<Map<String, dynamic>>();
+  }
+
+  /// Delete a voice profile
+  Future<Map<String, dynamic>> deleteVoice({
+    required String voiceId,
+  }) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/api/v1/voice/voices/$voiceId'),
+      headers: _headers(),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Delete voice failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Check voice service health
+  Future<Map<String, dynamic>> voiceHealthCheck() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/v1/voice/health'),
+      headers: _headers(),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Voice health check failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   String? _detail(http.Response res) {
     try {
       final body = jsonDecode(res.body);
       if (body is Map && body['detail'] != null) {
         return body['detail'].toString();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? _detailFromJson(String body) {
+    try {
+      final json = jsonDecode(body);
+      if (json is Map && json['detail'] != null) {
+        return json['detail'].toString();
       }
     } catch (_) {}
     return null;
