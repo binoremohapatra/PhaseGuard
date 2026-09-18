@@ -824,14 +824,34 @@ async def confirm_escalation(
         raise HTTPException(status_code=404, detail="Draft not found or already dispatched")
 
     from escalation.send_bridge import dispatch_escalation
+    from escalation.whatsapp_escalation import send_whatsapp_escalation_alert
+    from forensics.hashing import compute_audio_hash
+
     result = await dispatch_escalation(payload, call_session=session)
+
+    # Also dispatch WhatsApp alert to family contact (fire-and-forget style)
+    try:
+        hash_result = compute_audio_hash(session.recorded_audio_bytes)
+        identifiers = session.extracted_identifiers or {}
+        wa_result = await send_whatsapp_escalation_alert(
+            call_id=call_id,
+            verdict=payload.get("verdict", "UNKNOWN"),
+            upi_ids=identifiers.get("upi_ids", []),
+            phone_numbers=identifiers.get("phone_numbers", []),
+            entities=identifiers.get("impersonated_entities", []),
+            audio_hash=hash_result.get("sha256_hex", "N/A"),
+        )
+        logger.info("WhatsApp escalation result: %s", wa_result)
+    except Exception as _wa_err:
+        logger.warning("WhatsApp escalation failed (non-blocking): %s", _wa_err)
+        wa_result = {"success": False, "error": str(_wa_err), "delivery_status": "WHATSAPP_ERROR"}
 
     # Remove draft after dispatch (idempotency)
     drafts.pop(body.draft_id, None)
 
     logger.info(
-        "Escalation confirmed: call_id=%r success=%s dest=%r",
-        call_id, result["success"], result["destination"][:60],
+        "Escalation confirmed: call_id=%r email_success=%s wa_success=%s dest=%r",
+        call_id, result["success"], wa_result.get("success"), result["destination"][:60],
     )
 
     return {
@@ -839,6 +859,12 @@ async def confirm_escalation(
         "delivery_status": result["delivery_status"],
         "dispatched_at": result.get("dispatched_at"),
         "error": result.get("error"),
+        "whatsapp": {
+            "success": wa_result.get("success"),
+            "delivery_status": wa_result.get("delivery_status"),
+            "message_id": wa_result.get("message_id"),
+            "error": wa_result.get("error"),
+        },
     }
 
 

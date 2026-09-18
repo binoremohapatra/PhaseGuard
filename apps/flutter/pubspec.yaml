@@ -48,6 +48,11 @@ dependencies:
   tflite_flutter: ^0.12.1
   crypto: ^3.0.0  # SHA-256 for video deepfake evidence hashing
   speech_to_text: ^6.6.1  # Re-enabled — Kotlin 2.4.0 compatible
+  pdf: ^3.11.1          # Offline PDF generation on-device
+  printing: ^5.13.2     # PDF preview + print + share
+  share_plus: ^10.0.3   # Share PDF / evidence via WhatsApp, email etc.
+  url_launcher: ^6.3.1  # Open cybercrime.gov.in, dial 1930 etc.
+  open_filex: ^4.5.1    # Open saved PDF directly
 
 dev_dependencies:
   flutter_test:

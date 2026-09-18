@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 
 import '../models/protocol.dart';
 import '../services/api_client.dart';
 import '../services/call_socket.dart';
+import '../services/offline_dossier_service.dart';
 
 class SessionController extends ChangeNotifier {
   SessionController({ApiClient? api, CallSocket? socket})
@@ -264,8 +266,52 @@ class SessionController extends ChangeNotifier {
     return _api.activateScambaiter(callId: id, token: t);
   }
 
-  /// Download forensic dossier PDF
-  Future<List<int>> getDossier() async {
+  /// Generate forensic dossier PDF OFFLINE on device (no internet needed).
+  /// Falls back to server-side PDF only if local generation fails.
+  Future<String> generateOfflineDossier({
+    Uint8List? audioBytes,
+  }) async {
+    final id = callId ?? 'UNKNOWN';
+    return OfflineDossierService.generateAndSave(
+      callId: id,
+      verdict: factcheck?.status ?? 'UNKNOWN',
+      transcriptHistory: transcript != null ? [transcript!.text] : [],
+      factcheckHistory: factcheck != null
+          ? [
+              {
+                'ts': DateTime.now().toIso8601String(),
+                'status': factcheck!.status,
+                'message': factcheck!.message ?? '',
+              }
+            ]
+          : [],
+      scambaiterLog: const [],
+      detectedKeywords: factcheck?.keywords ?? [],
+      upiIds: const [],
+      phoneNumbers: const [],
+      impersonatedEntities: const [],
+      audioBytes: audioBytes,
+      callStartTime: DateTime.now(),
+    );
+  }
+
+  /// Share the offline PDF via WhatsApp, email etc.
+  Future<void> shareOfflineDossier(String pdfPath) async {
+    await OfflineDossierService.sharePdf(pdfPath, callId ?? 'UNKNOWN');
+  }
+
+  /// Open cybercrime portal in browser.
+  Future<void> openCybercrimePortal() async {
+    await OfflineDossierService.openCybercrimePortal();
+  }
+
+  /// Dial 1930 helpline.
+  Future<void> dialHelpline() async {
+    await OfflineDossierService.dialCybercrimeHelpline();
+  }
+
+  /// Download forensic dossier PDF from server (online fallback).
+  Future<List<int>> getDossierFromServer() async {
     final id = callId;
     final t = token;
     if (id == null || t == null) {
