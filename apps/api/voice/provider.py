@@ -446,3 +446,213 @@ class FishTTSProvider(TTSProvider):
                 message="Fish Audio voice creation failed",
                 provider_detail=str(e),
             )
+
+class SonexTTSProvider(TTSProvider):
+    """
+    Sonex Pāṇini TTS provider implementation.
+    """
+    def __init__(self):
+        self.cfg = get_settings()
+        self._client: Optional[httpx.AsyncClient] = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                base_url=self.cfg.sonex_base_url,
+                timeout=30.0,
+            )
+        return self._client
+
+    async def close(self):
+        if self._client:
+            await self._client.aclose()
+            self._client = None
+
+    def _get_headers(self) -> dict:
+        return {
+            "Authorization": f"Bearer {self.cfg.sonex_api_key}",
+            "Content-Type": "application/json",
+        }
+
+    def _handle_error(self, e: Exception, context: str):
+        if isinstance(e, httpx.HTTPStatusError):
+            status = e.response.status_code
+            if status == 401:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_AUTH_ERROR, f"Sonex auth failed: {context}", str(e))
+            elif status == 429:
+                retry_after = e.response.headers.get("Retry-After", "1")
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_RATE_LIMITED, f"Sonex rate limited (Retry-After: {retry_after}): {context}", str(e))
+            elif status >= 500:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sonex unavailable: {context}", str(e))
+            else:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sonex bad request ({status}): {context}", str(e))
+        elif isinstance(e, httpx.TimeoutException):
+            raise TTSError(TTSErrorCode.TTS_PROVIDER_TIMEOUT, f"Sonex timeout: {context}", str(e))
+        else:
+            raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sonex error: {context}", str(e))
+
+    async def synthesize(self, text: str, voice_id: Optional[str] = None, format: str = "mp3") -> bytes:
+        if not self.cfg.sonex_api_key:
+            raise TTSError(TTSErrorCode.PROVIDER_NOT_CONFIGURED, "Sonex API key not configured")
+        
+        request_body = {"text": text, "format": format}
+        if voice_id:
+            request_body["voice_id"] = voice_id
+
+        try:
+            response = await self.client.post("/v1/speech", headers=self._get_headers(), json=request_body)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            self._handle_error(e, "synthesize")
+
+    async def stream(self, text: str, voice_id: Optional[str] = None, format: str = "mp3"):
+        if not self.cfg.sonex_api_key:
+            raise TTSError(TTSErrorCode.PROVIDER_NOT_CONFIGURED, "Sonex API key not configured")
+        
+        request_body = {"text": text, "format": format}
+        if voice_id:
+            request_body["voice_id"] = voice_id
+
+        try:
+            async with self.client.stream("POST", "/v1/speech/stream", headers=self._get_headers(), json=request_body) as response:
+                response.raise_for_status()
+                async for chunk in response.aiter_bytes():
+                    yield chunk
+        except Exception as e:
+            self._handle_error(e, "stream")
+
+    async def health_check(self) -> bool:
+        if not self.cfg.sonex_api_key:
+            return False
+        try:
+            await self.synthesize("test", format="mp3")
+            return True
+        except:
+            return False
+
+    def supports_voice_cloning(self) -> bool:
+        return True
+
+    async def create_voice_reference(self, audio_data: bytes, display_name: str, user_id: Optional[str] = None) -> VoiceProfile:
+        if not self.cfg.sonex_api_key:
+            raise TTSError(TTSErrorCode.PROVIDER_NOT_CONFIGURED, "Sonex API key not configured")
+
+        files = {"audio": ("sample.wav", audio_data, "audio/wav")}
+        data = {"name": display_name}
+
+        try:
+            response = await self.client.post("/v1/voices/clone", headers={"Authorization": f"Bearer {self.cfg.sonex_api_key}"}, files=files, data=data)
+            response.raise_for_status()
+            result = response.json()
+            voice_id = result.get("id") or result.get("voice_id")
+            if not voice_id:
+                raise TTSError(TTSErrorCode.VOICE_CLONE_FAILED, "Sonex clone failed: no ID", str(result))
+            
+            return VoiceProfile(
+                provider="sonex",
+                provider_voice_id=voice_id,
+                display_name=display_name,
+                user_id=user_id,
+                metadata={"sonex_response": result},
+            )
+        except Exception as e:
+            self._handle_error(e, "create_voice_reference")
+
+class SarvamTTSProvider(TTSProvider):
+    """
+    Sarvam Bulbul V3 TTS provider implementation.
+    """
+    def __init__(self):
+        self.cfg = get_settings()
+        self._client: Optional[httpx.AsyncClient] = None
+
+    @property
+    def client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                base_url=self.cfg.sarvam_base_url,
+                timeout=30.0,
+            )
+        return self._client
+
+    async def close(self):
+        if self._client:
+            await self._client.aclose()
+            self._client = None
+
+    def _get_headers(self) -> dict:
+        return {
+            "api-subscription-key": self.cfg.sarvam_api_key,
+            "Content-Type": "application/json",
+        }
+
+    def _handle_error(self, e: Exception, context: str):
+        if isinstance(e, httpx.HTTPStatusError):
+            status = e.response.status_code
+            if status == 401:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_AUTH_ERROR, f"Sarvam auth failed: {context}", str(e))
+            elif status == 429:
+                retry_after = e.response.headers.get("Retry-After", "1")
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_RATE_LIMITED, f"Sarvam rate limited (Retry-After: {retry_after}): {context}", str(e))
+            elif status >= 500:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sarvam unavailable: {context}", str(e))
+            else:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sarvam bad request ({status}): {context}", str(e))
+        elif isinstance(e, httpx.TimeoutException):
+            raise TTSError(TTSErrorCode.TTS_PROVIDER_TIMEOUT, f"Sarvam timeout: {context}", str(e))
+        else:
+            raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, f"Sarvam error: {context}", str(e))
+
+    async def synthesize(self, text: str, voice_id: Optional[str] = None, format: str = "mp3") -> bytes:
+        if not self.cfg.sarvam_api_key:
+            raise TTSError(TTSErrorCode.PROVIDER_NOT_CONFIGURED, "Sarvam API key not configured")
+        
+        # Sarvam requires predefined speakers like 'meera'
+        speaker = voice_id if voice_id else "meera"
+        
+        request_body = {
+            "inputs": [text],
+            "target_language_code": "hi-IN",
+            "speaker": speaker,
+            "pitch": 0,
+            "pace": 1.0,
+            "loudness": 1.0,
+            "speech_sample_rate": 8000,
+            "enable_preprocessing": True,
+            "model": self.cfg.sarvam_model
+        }
+
+        try:
+            response = await self.client.post("/text-to-speech", headers=self._get_headers(), json=request_body)
+            response.raise_for_status()
+            
+            data = response.json()
+            if "audios" in data and len(data["audios"]) > 0:
+                import base64
+                return base64.b64decode(data["audios"][0])
+            else:
+                raise TTSError(TTSErrorCode.TTS_PROVIDER_UNAVAILABLE, "Sarvam returned no audio", str(data))
+        except Exception as e:
+            self._handle_error(e, "synthesize")
+
+    async def stream(self, text: str, voice_id: Optional[str] = None, format: str = "mp3"):
+        # Sarvam doesn't explicitly support HTTP chunked streaming for Bulbul v3.
+        audio_bytes = await self.synthesize(text, voice_id, format)
+        yield audio_bytes
+
+    async def health_check(self) -> bool:
+        if not self.cfg.sarvam_api_key:
+            return False
+        try:
+            await self.synthesize("test", format="mp3")
+            return True
+        except:
+            return False
+
+    def supports_voice_cloning(self) -> bool:
+        return False
+
+    async def create_voice_reference(self, audio_data: bytes, display_name: str, user_id: Optional[str] = None) -> VoiceProfile:
+        raise TTSError(TTSErrorCode.VOICE_CLONE_FAILED, "Sarvam does not support dynamic voice cloning in current API")

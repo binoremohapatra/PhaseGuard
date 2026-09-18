@@ -1,10 +1,27 @@
 import os
+# CRITICAL: Override matplotlib backend BEFORE any imports that touch matplotlib.
+# Jupyter sets MPLBACKEND to 'matplotlib_inline.backend_inline' which crashes
+# server-side matplotlib. We force 'Agg' (non-GUI) immediately.
+os.environ['MPLBACKEND'] = 'Agg'
+os.environ['MPLCONFIGDIR'] = '/tmp/matplotlib'
+
 import torch
 import tempfile
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse
+
+# Bypass Coqui TOS interactive prompt (must happen before TTS import resolves)
+import unittest.mock as mock
+import sys
+
+# Patch the ask_tos function so it always returns True non-interactively
+_tos_patcher = mock.patch('builtins.input', return_value='y')
+_tos_patcher.start()
+
 from TTS.api import TTS
+
+_tos_patcher.stop()
 
 app = FastAPI(title="PhaseGuard Voice Cloning API", description="XTTSv2 GPU Server for Scambaiter")
 
@@ -12,13 +29,6 @@ app = FastAPI(title="PhaseGuard Voice Cloning API", description="XTTSv2 GPU Serv
 # We use XTTS-v2 because it only needs a 3-second reference audio to clone a voice perfectly.
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(f"Loading XTTSv2 model on {device}...")
-
-# Fix Matplotlib GUI crash
-os.environ['MPLBACKEND'] = 'Agg'
-# Bypass Coqui TOS interactive prompt
-import TTS.utils.manage
-def mock_ask_tos(path): return True
-TTS.utils.manage.ask_tos = mock_ask_tos
 
 tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2").to(device)
 print("Model loaded successfully!")

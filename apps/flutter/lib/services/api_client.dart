@@ -234,7 +234,7 @@ class ApiClient {
     required String text,
     String? voiceId,
     String format = 'mp3',
-    String provider = 'fish',
+    String provider = 'auto',
   }) async {
     final body = <String, dynamic>{
       'text': text,
@@ -254,6 +254,33 @@ class ApiClient {
       throw ApiException(_detail(res) ?? 'TTS synthesis failed');
     }
     return res.bodyBytes;
+  }
+
+  /// Stream text to speech
+  Future<http.StreamedResponse> streamVoice({
+    required String text,
+    String? voiceId,
+    String format = 'mp3',
+    String provider = 'auto',
+  }) async {
+    final body = <String, dynamic>{
+      'text': text,
+      'format': format,
+      'provider': provider,
+    };
+    if (voiceId != null) {
+      body['voice_id'] = voiceId;
+    }
+
+    final request = http.Request('POST', Uri.parse('$baseUrl/api/v1/voice/stream'))
+      ..headers.addAll(_headers())
+      ..body = jsonEncode(body);
+
+    final res = await request.send();
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException('Voice streaming failed: ${res.statusCode}');
+    }
+    return res;
   }
 
   /// List enrolled voice profiles

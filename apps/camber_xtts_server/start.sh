@@ -2,19 +2,21 @@
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
-echo "Downloading Cloudflare Tunnel (cloudflared)..."
-wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O cloudflared
-chmod +x cloudflared
-
 echo "Starting FastAPI XTTSv2 Server in the background..."
-python main.py &
+MPLBACKEND=Agg python main.py &
 
-echo "Waiting for server to start..."
-sleep 15
+echo "Waiting 60 seconds for the heavy 2.5GB model to load..."
+sleep 60
 
-echo "Starting Cloudflare Tunnel..."
 echo "================================================================"
-echo "LOOK FOR THE URL BELOW (it looks like https://xxxx.trycloudflare.com)"
+echo "Starting Pinggy Tunnel (uses SSH port 443 - works everywhere)..."
+echo "LOOK FOR THE URL BELOW (it looks like https://xxxx.a.pinggy.io)"
 echo "Send this URL to the frontend/app team!"
 echo "================================================================"
-./cloudflared tunnel --url http://127.0.0.1:8000
+# Pinggy uses SSH over port 443 which is never blocked.
+# The tunnel URL will appear in the output below.
+ssh -p 443 -R0:localhost:8000 \
+    -o StrictHostKeyChecking=no \
+    -o ServerAliveInterval=30 \
+    -o ServerAliveCountMax=3 \
+    a.pinggy.io

@@ -78,6 +78,15 @@ class Settings(BaseSettings):
     fish_model: str = Field(default="s2.1-pro-free", description="Fish Audio model (s2.1-pro-free, s2.1-pro, s1)")
     fish_base_url: str = Field(default="https://api.fish.audio", description="Fish Audio API base URL")
 
+    # ── Sonex (TTS + Voice Cloning) ───────────────────────────────────────────
+    sonex_api_key: str = Field(default="", description="Sonex Pāṇini API key")
+    sonex_base_url: str = Field(default="https://api.sonexlabs.com", description="Sonex API base URL")
+
+    # ── Sarvam (TTS) ──────────────────────────────────────────────────────────
+    sarvam_api_key: str = Field(default="", description="Sarvam Bulbul V3 API key")
+    sarvam_model: str = Field(default="bulbul:v3", description="Sarvam model")
+    sarvam_base_url: str = Field(default="https://api.sarvam.ai", description="Sarvam API base URL")
+
     # ── Database (PostgreSQL for voice profile persistence) ───────────────────
     database_url: str = Field(
         default="postgresql+asyncpg://user:password@localhost/phaseguard",
@@ -241,6 +250,16 @@ class Settings(BaseSettings):
                 print(f"[OK] Fish Audio TTS: ACTIVE (model={self.fish_model})")
             else:
                 print("[WARN] Fish Audio TTS: NOT CONFIGURED (add FISH_API_KEY)")
+            
+            if self.sonex_api_key:
+                print(f"[OK] Sonex Pāṇini TTS: ACTIVE")
+            else:
+                print("[WARN] Sonex Pāṇini TTS: NOT CONFIGURED (add SONEX_API_KEY)")
+                
+            if self.sarvam_api_key:
+                print(f"[OK] Sarvam Bulbul V3 TTS: ACTIVE")
+            else:
+                print("[WARN] Sarvam Bulbul V3 TTS: NOT CONFIGURED (add SARVAM_API_KEY)")
 
         print("[OK] Company Verification (WHOIS + MCA link + public-presence check): ACTIVE")
 

@@ -23,6 +23,14 @@ class TTSErrorCode(str, Enum):
     FISH_INVALID_REQUEST = "FISH_INVALID_REQUEST"
     FISH_GENERATION_ERROR = "FISH_GENERATION_ERROR"
 
+    # Unified provider errors
+    TTS_PROVIDER_TIMEOUT = "TTS_PROVIDER_TIMEOUT"
+    TTS_PROVIDER_RATE_LIMITED = "TTS_PROVIDER_RATE_LIMITED"
+    TTS_PROVIDER_UNAVAILABLE = "TTS_PROVIDER_UNAVAILABLE"
+    TTS_PROVIDER_AUTH_ERROR = "TTS_PROVIDER_AUTH_ERROR"
+    TTS_ALL_PROVIDERS_FAILED = "TTS_ALL_PROVIDERS_FAILED"
+    VOICE_CLONE_FAILED = "VOICE_CLONE_FAILED"
+
     # Generic errors
     VOICE_NOT_FOUND = "VOICE_NOT_FOUND"
     INVALID_AUDIO = "INVALID_AUDIO"
@@ -88,6 +96,10 @@ class TTSResponse(BaseModel):
     duration_seconds: Optional[float] = Field(default=None, description="Audio duration in seconds")
     provider: str = Field(description="Provider used")
     voice_id: Optional[str] = Field(default=None, description="Voice profile ID used")
+    fallback_used: bool = Field(default=False, description="True if a fallback provider was used")
+    time_to_first_audio_ms: Optional[float] = Field(default=None, description="Time to first audio in ms")
+    total_generation_time_ms: Optional[float] = Field(default=None, description="Total generation time in ms")
+    request_id: str = Field(default_factory=lambda: str(uuid4()), description="Request ID")
 
 
 class VoiceEnrollRequest(BaseModel):
