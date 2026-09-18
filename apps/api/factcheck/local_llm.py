@@ -4,7 +4,14 @@ import os
 import re
 from pathlib import Path
 import numpy as np
-import tensorflow as tf
+
+# TensorFlow is optional - local ML disabled by design in favor of backend services
+try:
+    import tensorflow as tf
+    TENSORFLOW_AVAILABLE = True
+except ImportError:
+    TENSORFLOW_AVAILABLE = False
+    tf = None
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +33,11 @@ class LocalScamClassifier:
 
     def load_model(self):
         """Load TFLite model and metadata for Layer 2"""
+        if not TENSORFLOW_AVAILABLE:
+            logger.warning("TensorFlow not available - local ML model disabled (using backend services instead)")
+            self.is_loaded = False
+            return
+            
         try:
             assets_dir = Path(__file__).resolve().parent.parent.parent / "flutter" / "assets" / "models"
             tflite_path = assets_dir / "scam_detector.tflite"
@@ -843,7 +855,7 @@ class LocalScamClassifier:
         # ==========================================
         # LAYER 2: TFLite Model Decision
         # ==========================================
-        if self.is_loaded and self.interpreter:
+        if TENSORFLOW_AVAILABLE and self.is_loaded and self.interpreter:
             try:
                 vector = self._transform_text(transcript)
                 sample = np.expand_dims(vector, axis=0)
@@ -881,6 +893,8 @@ class LocalScamClassifier:
                     }
             except Exception as e:
                 logger.error(f"Error during TFLite inference: {e}")
+        elif not TENSORFLOW_AVAILABLE:
+            logger.debug("TensorFlow not available - skipping TFLite layer (using backend services instead)")
         
         # Fallback if model not loaded or inference failed
         return {

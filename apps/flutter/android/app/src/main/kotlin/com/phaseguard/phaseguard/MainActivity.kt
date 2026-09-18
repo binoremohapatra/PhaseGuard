@@ -12,6 +12,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.telecom.TelecomManager
 import android.util.Log
 import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
@@ -43,14 +44,67 @@ class MainActivity : FlutterActivity() {
     // private var recordingPriorityManager: RecordingPriorityManager? = null
     private var audioCaptureModule: AudioCaptureModule? = null
     
+    // TelecomManager for call handling
+    private var telecomManager: TelecomManager? = null
+    
     // Coroutine scope for async operations
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        // Initialize TelecomManager
+        telecomManager = getSystemService(Context.TELECOM_SERVICE) as TelecomManager
+        
+        // Handle dialer intents
+        handleDialerIntent(intent)
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDialerIntent(intent)
+    }
+    
+    private fun handleDialerIntent(intent: Intent?) {
+        intent?.let {
+            when (it.action) {
+                Intent.ACTION_DIAL, Intent.ACTION_CALL -> {
+                    val phoneNumber = it.data?.schemeSpecificPart
+                    if (phoneNumber != null) {
+                        // Notify Flutter about the dial request
+                        Log.d(TAG, "Dial request for: $phoneNumber")
+                        
+                        // Store phone number for later use
+                        // This can be sent to Flutter via method channel when needed
+                        // methodChannel?.invokeMethod("onDialRequest", mapOf("phoneNumber" to phoneNumber))
+                    }
+                }
+            }
+        }
+    }
+    
+    private fun answerIncomingCall(): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                telecomManager?.acceptRingingCall()
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error answering call: ${e.message}")
+            false
+        }
+    }
     
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
         // Set flutter messenger for Accessibility Service
         CallAccessibilityService.setFlutterMessenger(flutterEngine.dartExecutor.binaryMessenger)
+        
+        // Set flutter messenger for InCallService
+        PhaseGuardInCallService.setFlutterMessenger(flutterEngine.dartExecutor.binaryMessenger)
         
         // Initialize Bluetooth SCO capture
         bluetoothScoCapture = BluetoothScoCapture()

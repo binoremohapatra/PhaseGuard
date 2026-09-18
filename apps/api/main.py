@@ -67,8 +67,14 @@ async def lifespan(app: FastAPI):
     from core.config import get_settings
     get_settings().log_startup_summary()
     
-    from factcheck.local_llm import LocalScamClassifier
-    LocalScamClassifier().load_model()
+    # Try to load local ML model (optional - disabled by design in favor of backend services)
+    try:
+        from factcheck.local_llm import LocalScamClassifier
+        LocalScamClassifier().load_model()
+    except ImportError as e:
+        logger.warning(f"Local ML model import failed (expected): {e} - using backend services instead")
+    except Exception as e:
+        logger.warning(f"Local ML model loading failed: {e} - using backend services instead")
     
     get_executor()  # Pre-create the ThreadPoolExecutor
     yield
