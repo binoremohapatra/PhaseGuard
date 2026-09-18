@@ -80,19 +80,18 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 **Location:** `apps/flutter/`
 
 **Features:**
+- ✅ **3-Level Scam Detection Architecture:** Full hybrid flow maximizing privacy and efficiency.
 - ✅ Basic scam detection (98.7% accuracy, 300+ keywords)
 - ✅ Advanced ML detection (35 categories, weighted patterns)
-- ✅ Hybrid detection system (3-layer fallback)
+- ✅ **2-Level Audio Deepfake Detection:** Checks locally first on-device, falls back to server if uncertain.
 - ✅ Real-time WebSocket integration
-- ✅ Audio capture services
-- ✅ Shizuku integration
-- ✅ DSP analysis (available)
-- ✅ Multi-language support (English, Hindi, Tamil, Telugu, Bengali, Marathi, Kannada, Malayalam, Punjabi, Gujarati)
+- ✅ Audio capture services & Shizuku integration
+- ✅ Multi-language support (English, Hindi, Tamil, Telugu, etc.)
 
-**Detection Layers:**
-1. **Rule-based:** Immediate keyword matching
-2. **Advanced ML:** Weighted pattern analysis
-3. **Web API:** Backend LLM verification
+**3-Level Hybrid Scam Detection Architecture:**
+1. **Level 1 (Offline On-Device):** Audio is processed locally via TFLite models and rule-based matching. Zero latency, complete privacy.
+2. **Level 2 (Online Web API):** If offline detection is uncertain or triggered, audio falls back to the backend LLM (Groq/Llama) for deep semantic analysis and fact-checking.
+3. **Level 3 (Fallback/Recovery):** If internet drops or server is unreachable, the system gracefully degrades back to strict offline rules to ensure continuous protection.
 
 ---
 
@@ -141,16 +140,19 @@ Audio Input → Whisper STT → Claim Extraction → Search Verification → Ver
 
 ## 🎭 AI Scambaiter
 
-### "Ramesh Ji" Persona
-- **Character:** 72-year-old retired schoolteacher from Lucknow
-- **Personality:** Slightly hard of hearing, easily confused by technology
-- **Language:** Hindi using Devanagari script
-- **Behavior:** Frequently mishears numbers, forgets what was said, goes off on tangents
-- **Goal:** Waste scammer's time without giving useful information
+### "Ramesh Ji" Persona & 3-Level Voice Architecture
+The AI Scambaiter actively engages scammers to waste their time using cloned voices or our custom "Ramesh Ji" persona.
+- **Character:** 72-year-old retired schoolteacher from Lucknow, easily confused by technology.
+- **Goal:** Waste scammer's time without giving useful information.
+- **3-Level Cloud TTS Architecture:** The Scambaiter uses a highly resilient voice generation pipeline:
+  1. **Level 1:** Fish Audio (Primary - Fast streaming and Voice Cloning)
+  2. **Level 2:** Sonex Pāṇini (Secondary Fallback - Indian localized voices)
+  3. **Level 3:** Sarvam Bulbul V3 (Final Fallback - Fixed reliable voices)
+  *(System auto-routes around timeouts, 429s, or provider failures to ensure the scammer never hears silence!)*
 
 ### Security Features
+- **Real-time Voice Cloning:** Automatically clones user's voice (via WhatsApp sample) to fool scammers.
 - Hard filter for real identifiers (phone numbers, UPI IDs, Aadhaar, PAN)
-- Never shares personal/financial data
 - Anti-loop system prevents repeating excuses
 - State machine prevents unauthorized activation
 
@@ -158,20 +160,16 @@ Audio Input → Whisper STT → Claim Extraction → Search Verification → Ver
 
 ## 📄 Forensic Evidence
 
-### PDF Dossier Generation
+### Offline PDF Dossier Generation
 **Features:**
-- PhaseGuard branding
-- Call metadata
-- SHA-256 audio hashing
-- Chain of custody tracking
-- DSP analysis findings
-- Extracted identifiers
-- Fact-check history
-- Scambaiter log
-- Escalation records
-- Spectrogram visualization
+- **Generated 100% Offline on Phone:** The forensic PDF is generated locally on the mobile device, ensuring privacy and immediate availability even without an internet connection.
+- PhaseGuard branding & Call metadata
+- SHA-256 audio hashing & Chain of custody tracking
+- DSP analysis findings & Extracted identifiers
+- Fact-check history & Scambaiter log
+- Escalation records & Spectrogram visualization
 
-**Format:** Compatible with India's 1930 cybercrime portal
+**Format:** Directly compatible with India's 1930 Cybercrime Portal reporting format.
 
 ---
 
