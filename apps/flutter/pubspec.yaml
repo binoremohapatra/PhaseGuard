@@ -44,10 +44,10 @@ dependencies:
   # flutter_llama: ^1.1.2  # Disabled — llama_cpp_dart is more stable
   llama_cpp_dart: ^0.2.2  # Re-enabled — real on-device LLM inference (NDK 27 fixed)
   google_mlkit_face_detection: ^0.13.0
+  speech_to_text: ^6.6.1  # Re-enabled — Kotlin 2.4.0 compatible
   fftea: ^1.0.0
   tflite_flutter: ^0.12.1
   crypto: ^3.0.0  # SHA-256 for video deepfake evidence hashing
-  speech_to_text: ^6.6.1  # Re-enabled — Kotlin 2.4.0 compatible
   pdf: ^3.11.1          # Offline PDF generation on-device
   printing: ^5.13.2     # PDF preview + print + share
   share_plus: ^10.0.3   # Share PDF / evidence via WhatsApp, email etc.

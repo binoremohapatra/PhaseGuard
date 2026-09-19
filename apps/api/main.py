@@ -220,6 +220,61 @@ class ScamTextRequest(BaseModel):
     text: str
     include_reasoning: bool = True
 
+
+class AudioSttRequest(BaseModel):
+    audio_data: str  # Base64 encoded audio
+    language: str = "auto"  # auto, hi, en
+
+
+@app.post("/api/stt/transcribe")
+async def transcribe_audio(file: UploadFile = File(...)):
+    """
+    Transcribe audio file to text using Groq Whisper.
+    For Flutter app audio file transcription (Shizuku capture, etc.).
+    """
+    try:
+        from factcheck.stt import transcribe_chunk
+        import soundfile as sf
+        import numpy as np
+        import io
+        
+        # Read audio file
+        audio_bytes = await file.read()
+        
+        # Convert to numpy array
+        audio_buffer = io.BytesIO(audio_bytes)
+        audio, sr = sf.read(audio_buffer)
+        
+        # Resample to 16kHz if needed
+        if sr != 16000:
+            import librosa
+            audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+            sr = 16000
+        
+        # Transcribe
+        transcript = await transcribe_chunk(audio, sr, call_id='api_stt')
+        
+        if transcript is None:
+            return {
+                "success": False,
+                "error": "Transcription failed or audio is silent",
+                "transcript": None
+            }
+        
+        return {
+            "success": True,
+            "transcript": transcript,
+            "language": "auto-detected"
+        }
+    except Exception as e:
+        logger.error(f"STT API error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "transcript": None
+        }
+
+
 @app.post("/api/scam/analyze")
 async def analyze_scam_text(body: ScamTextRequest):
     """

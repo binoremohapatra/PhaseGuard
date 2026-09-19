@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -147,6 +148,40 @@ class ApiClient {
       throw ApiException(_detail(res) ?? 'Dossier download failed');
     }
     return res.bodyBytes;
+  }
+
+  /// Transcribe audio file using backend STT (Groq Whisper)
+  Future<Map<String, dynamic>> transcribeAudio({
+    required String filePath,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/stt/transcribe');
+      final request = http.MultipartRequest('POST', uri);
+      
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw ApiException('Audio file not found: $filePath');
+      }
+      
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          filePath,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException('STT transcription failed (${response.statusCode})');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw ApiException('STT transcription error: $e');
+    }
+  }
   }
 
   /// Get call history with optional limit
