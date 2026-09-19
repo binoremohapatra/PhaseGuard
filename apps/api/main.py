@@ -226,6 +226,46 @@ class AudioSttRequest(BaseModel):
     language: str = "auto"  # auto, hi, en
 
 
+@app.post("/api/audio/upload")
+async def upload_audio_for_analysis(file: UploadFile = File(...)):
+    """
+    Upload audio file for backend analysis.
+    Used by Flutter app to send Shizuku-captured audio for:
+    - Deepfake detection
+    - Company verification
+    - Scambaiter preparation
+    """
+    try:
+        from detection.multi_detector_fallback import detect_audio_bytes
+        import soundfile as sf
+        import numpy as np
+        import io
+        
+        # Read audio file
+        audio_bytes = await file.read()
+        
+        # Convert to numpy array
+        audio_buffer = io.BytesIO(audio_bytes)
+        audio, sr = sf.read(audio_buffer)
+        
+        # Run deepfake detection
+        detection_result = await detect_audio_bytes(audio_bytes, sr)
+        
+        return {
+            "success": True,
+            "audio_length": len(audio),
+            "sample_rate": sr,
+            "deepfake_detection": detection_result,
+            "message": "Audio received, analysis complete"
+        }
+    except Exception as e:
+        logger.error(f"Audio upload error: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
 @app.post("/api/stt/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
     """

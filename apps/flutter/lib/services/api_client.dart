@@ -182,6 +182,39 @@ class ApiClient {
       throw ApiException('STT transcription error: $e');
     }
   }
+
+  /// Upload audio for backend analysis (deepfake detection, company verification)
+  Future<Map<String, dynamic>> uploadAudioForAnalysis({
+    required String filePath,
+  }) async {
+    try {
+      final uri = Uri.parse('$baseUrl/api/audio/upload');
+      final request = http.MultipartRequest('POST', uri);
+      
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw ApiException('Audio file not found: $filePath');
+      }
+      
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          filePath,
+        ),
+      );
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw ApiException('Audio upload failed (${response.statusCode})');
+      }
+
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (e) {
+      throw ApiException('Audio upload error: $e');
+    }
+  }
   }
 
   /// Get call history with optional limit
