@@ -15,6 +15,7 @@ class ModelType(Enum):
     AASIST_L = "aasist_l"
     AASIST = "aasist"
     RAWNET2 = "rawnet2"
+    RAWGAT_ST = "rawgat_st"
 
 
 class ModelConfig:
@@ -44,8 +45,8 @@ class ModelRegistry:
         # Current existing models
         self.models[ModelType.SPECRNET] = ModelConfig(
             ModelType.SPECRNET, "SpecRNet", available=True,
-            accuracy="33-67% (tested)", latency_ms=2400, memory_mb=277,
-            description="Lightweight CPU model, variable accuracy"
+            accuracy="80% (tested)", latency_ms=85, memory_mb=277,
+            description="Lightweight CPU model, good human detection"
         )
 
         self.models[ModelType.VOICESHIELD] = ModelConfig(
@@ -63,7 +64,7 @@ class ModelRegistry:
         # New models to implement
         self.models[ModelType.AASIST_L] = ModelConfig(
             ModelType.AASIST_L, "AASIST-L", available=True,
-            accuracy="Not tested", latency_ms=None, memory_mb=None,
+            accuracy="23% (tested)", latency_ms=131, memory_mb=None,
             description="Mobile model, ONNX Runtime, 64600 samples input"
         )
 
@@ -77,6 +78,12 @@ class ModelRegistry:
             ModelType.RAWNET2, "RawNet2", available=False,
             accuracy="Not tested", latency_ms=None, memory_mb=None,
             description="Lightweight CNN-RNN, TFLite ready"
+        )
+
+        self.models[ModelType.RAWGAT_ST] = ModelConfig(
+            ModelType.RAWGAT_ST, "RawGAT-ST", available=False,
+            accuracy="Not tested", latency_ms=None, memory_mb=None,
+            description="Graph attention network model"
         )
 
     def get_model(self, model_type: ModelType) -> Optional[ModelConfig]:
