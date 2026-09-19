@@ -845,13 +845,18 @@ class MultiDetectorFallback:
 
 # Global instance
 _multi_detector: Optional[MultiDetectorFallback] = None
+_current_ensemble_mode: Optional[bool] = None
 
 
 def get_multi_detector(use_ensemble: bool = True) -> MultiDetectorFallback:
     """Get or create global multi-detector instance"""
-    global _multi_detector
-    if _multi_detector is None:
+    global _multi_detector, _current_ensemble_mode
+    
+    # Recreate instance if ensemble mode changed
+    if _multi_detector is None or _current_ensemble_mode != use_ensemble:
         _multi_detector = MultiDetectorFallback(use_ensemble=use_ensemble)
+        _current_ensemble_mode = use_ensemble
+    
     return _multi_detector
 
 

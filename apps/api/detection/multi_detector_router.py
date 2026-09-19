@@ -76,6 +76,15 @@ async def detect_audio(file: UploadFile = File(...), use_ensemble: bool = Query(
             # Detect with fallback
             result = detect_with_fallback(waveform, tmp_path, use_ensemble=use_ensemble)
             
+            # Force detector info for single mode
+            if not use_ensemble and result.metadata and "ensemble_method" in result.metadata:
+                # Remove ensemble metadata for single mode
+                result.metadata.pop("ensemble_method", None)
+                result.metadata.pop("detector_count", None)
+                result.metadata.pop("individual_results", None)
+                result.metadata.pop("majority_vote", None)
+                result.metadata.pop("vote_count", None)
+            
             return {
                 "status": "success",
                 **result.to_dict(),
@@ -147,6 +156,15 @@ async def detect_audio_bytes(audio_bytes: bytes, use_ensemble: bool = Query(True
         
         # Detect with fallback
         result = detect_with_fallback(waveform, use_ensemble=use_ensemble)
+        
+        # Force detector info for single mode
+        if not use_ensemble and result.metadata and "ensemble_method" in result.metadata:
+            # Remove ensemble metadata for single mode
+            result.metadata.pop("ensemble_method", None)
+            result.metadata.pop("detector_count", None)
+            result.metadata.pop("individual_results", None)
+            result.metadata.pop("majority_vote", None)
+            result.metadata.pop("vote_count", None)
         
         return {
             "status": "success",

@@ -34,14 +34,8 @@ class OfflineSttService {
     try {
       debugPrint('OfflineSTT: Loading model from $_modelAsset...');
 
-      // Load model from assets
-      _interpreter = await Tflite.loadModel(
-        model: _modelAsset,
-        options: InterpreterOptions(
-          threads: 2,
-          useNnapi: true, // Use Android NNAPI for acceleration
-        ),
-      );
+      // Load model from assets using tflite_flutter
+      _interpreter = await Interpreter.fromAsset(_modelAsset);
 
       if (_interpreter == null) {
         debugPrint('OfflineSTT: ❌ Failed to load model');

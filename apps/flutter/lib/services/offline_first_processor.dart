@@ -189,14 +189,6 @@ class OfflineFirstProcessor {
     }
   }
 
-  /// Public method for local-only processing (offline mode).
-  Future<Map<String, dynamic>> processLocal(
-    List<int> audioBytes,
-    String filePath,
-  ) async {
-    return _processLocal(audioBytes, filePath);
-  }
-
   /// Web processing (when available).
   Future<Map<String, dynamic>?> _processWeb(String filePath) async {
     try {
