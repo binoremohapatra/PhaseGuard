@@ -25,8 +25,17 @@ class ModelManager:
 
     def __init__(self):
         """Initialize model manager."""
+        # Force reinitialization for testing fixes
         if not self._is_initialized:
             self._initialize_models()
+
+    def force_reload(self):
+        """Force reload all models (for testing)."""
+        print("[MODEL RELOAD] Forcing model reload...")
+        self._models.clear()
+        self._load_counts.clear()
+        self._is_initialized = False
+        self._initialize_models()
 
     def _initialize_models(self):
         """Initialize all models once at startup."""

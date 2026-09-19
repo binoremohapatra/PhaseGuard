@@ -211,11 +211,12 @@ class ValidatedBenchmark:
         metrics['memory_mb'] = float(np.mean(memory_usage)) if memory_usage else 0.0
 
         # Add validation statistics
-        metrics['total_samples'] = len(valid_files)
-        metrics['successful_samples'] = len(all_predictions)
-        metrics['failed_samples'] = len(failed_samples)
-        metrics['failure_rate'] = len(failed_samples) / len(valid_files) if len(valid_files) > 0 else 0.0
-        metrics['failed_sample_details'] = failed_samples
+        metrics['total_files'] = len(valid_files)
+        metrics['total_inferences'] = len(all_predictions)
+        metrics['successful_inferences'] = len(all_predictions)
+        metrics['failed_inferences'] = len(failed_samples)
+        metrics['failure_rate'] = len(failed_samples) / (len(all_predictions) + len(failed_samples)) if (len(all_predictions) + len(failed_samples)) > 0 else 0.0
+        metrics['failed_inference_details'] = failed_samples
 
         # Determine benchmark validity
         if metrics['failure_rate'] > 0:
@@ -298,12 +299,13 @@ class ValidatedBenchmark:
             'warm_p50_latency_ms': 0.0,
             'warm_p95_latency_ms': 0.0,
             'memory_mb': 0.0,
-            'total_samples': 0,
-            'successful_samples': 0,
-            'failed_samples': 0,
+            'total_files': 0,
+            'total_inferences': 0,
+            'successful_inferences': 0,
+            'failed_inferences': 0,
             'failure_rate': 0.0,
             'benchmark_status': 'INVALID',
-            'failed_sample_details': []
+            'failed_inference_details': []
         }
 
     def run_benchmark(self):
@@ -331,9 +333,10 @@ class ValidatedBenchmark:
         for model_name, metrics in self.results.items():
             print(f"\n{model_name}:")
             print(f"  Benchmark Status: {metrics['benchmark_status']}")
-            print(f"  Total Samples: {metrics['total_samples']}")
-            print(f"  Successful Samples: {metrics['successful_samples']}")
-            print(f"  Failed Samples: {metrics['failed_samples']}")
+            print(f"  Total Files: {metrics['total_files']}")
+            print(f"  Total Inferences: {metrics['total_inferences']}")
+            print(f"  Successful Inferences: {metrics['successful_inferences']}")
+            print(f"  Failed Inferences: {metrics['failed_inferences']}")
             print(f"  Failure Rate: {metrics['failure_rate']:.2%}")
 
             if metrics['benchmark_status'] == 'VALID':
@@ -351,7 +354,7 @@ class ValidatedBenchmark:
                 print(f"  Warm P50 Latency: {metrics['warm_p50_latency_ms']:.2f}ms")
                 print(f"  Warm P95 Latency: {metrics['warm_p95_latency_ms']:.2f}ms")
             else:
-                print(f"  [INVALID] Cannot report metrics due to failed samples")
+                print(f"  [INVALID] Cannot report metrics due to failed inferences")
 
         # Save results
         output = {

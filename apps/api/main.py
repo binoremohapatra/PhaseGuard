@@ -155,6 +155,13 @@ try:
 except ImportError:
     pass
 
+# Include Multi-Detector Fallback router
+try:
+    from detection.multi_detector_router import router as multi_detector_router
+    app.include_router(multi_detector_router)
+except ImportError:
+    pass
+
 
 # ── Request / Response Models ─────────────────────────────────────────────────
 

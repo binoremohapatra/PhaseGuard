@@ -100,12 +100,13 @@ class AASISTLDetector(DeepfakeDetector):
             # Apply softmax to convert logits to probabilities
             probabilities = self._softmax(logits[0])  # Shape: [2]
 
-            # AASIST-L output order: [bonafide, spoof]
-            # Higher score = more bona fide/real
-            bona_fide_prob = probabilities[0]
-            spoof_prob = probabilities[1]
+            # AASIST-L output order: Based on raw model testing, it's [spoof, bonafide]
+            # Real sample: [0.1065, 0.8935] -> spoof=0.1065, bonafide=0.8935 (correct for real)
+            # Synthetic sample: [1.0000, 0.0000] -> spoof=1.0000, bonafide=0.0000 (correct for synthetic)
+            spoof_prob = probabilities[0]
+            bona_fide_prob = probabilities[1]
 
-            # Convert to PhaseGuard format (higher spoof score = more synthetic)
+            # Use native model output directly (higher spoof = more synthetic)
             spoof_score = spoof_prob
             bonafide_score = bona_fide_prob
 

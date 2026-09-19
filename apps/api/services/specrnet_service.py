@@ -142,15 +142,9 @@ class SpecRNetService:
 
             inference_time = (time.time() - start_time) * 1000  # Convert to ms
 
-            # Adaptive threshold for better balance
-            # Try to balance human and synthetic detection
-            if probability > 0.6:
-                is_synthetic = true  # High confidence synthetic
-            elif probability < 0.4:
-                is_synthetic = false  # High confidence human
-            else:
-                # For uncertain cases, use conservative threshold
-                is_synthetic = probability >= 0.5
+            # Use raw probability without adaptive threshold for diagnostic analysis
+            # The adaptive threshold may be interfering with score separation
+            is_synthetic = probability >= 0.5
 
             return {
                 "is_synthetic": is_synthetic,

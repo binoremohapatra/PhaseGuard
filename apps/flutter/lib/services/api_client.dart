@@ -322,6 +322,72 @@ class ApiClient {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  // ── Multi-Detector Fallback API Methods ───────────────────────────────────────
+
+  /// Detect if audio is synthetic/real using multi-detector fallback
+  /// Fallback chain: Vocalyx → final-voice-deepfake → VoiceGuard Pro → VoiceShield Local
+  Future<Map<String, dynamic>> detectAudio({
+    required List<int> audioBytes,
+    String fileName = 'audio.wav',
+  }) async {
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse('$baseUrl/api/v1/multi-detector/detect'),
+    );
+    request.files.add(http.MultipartFile.fromBytes(
+      'file',
+      audioBytes,
+      filename: fileName,
+    ));
+
+    final res = await request.send();
+    final body = await res.stream.bytesToString();
+
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detailFromJson(body) ?? 'Multi-detector detection failed');
+    }
+    return jsonDecode(body) as Map<String, dynamic>;
+  }
+
+  /// Detect if audio is synthetic/real from bytes directly
+  Future<Map<String, dynamic>> detectAudioBytes({
+    required List<int> audioBytes,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/v1/multi-detector/detect/bytes'),
+      headers: _headers(),
+      body: audioBytes,
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Multi-detector detection from bytes failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Get availability status of all detectors
+  Future<Map<String, dynamic>> getDetectorStatus() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/v1/multi-detector/status'),
+      headers: _headers(),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Detector status check failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
+  /// Get information about available detectors
+  Future<Map<String, dynamic>> getDetectorInfo() async {
+    final res = await http.get(
+      Uri.parse('$baseUrl/api/v1/multi-detector/info'),
+      headers: _headers(),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Detector info fetch failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   String? _detail(http.Response res) {
     try {
       final body = jsonDecode(res.body);

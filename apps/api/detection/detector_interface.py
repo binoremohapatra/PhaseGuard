@@ -102,10 +102,22 @@ class DetectionResult:
 class ThresholdConfig:
     """Configurable thresholds for decision making."""
 
-    def __init__(self, real_threshold: float = 0.3,
-                 suspicious_low: float = 0.3,
-                 suspicious_high: float = 0.7,
-                 synthetic_threshold: float = 0.7):
+    def __init__(self, real_threshold: float = 0.11,
+                 suspicious_low: float = 0.11,
+                 suspicious_high: float = 0.95,
+                 synthetic_threshold: float = 0.95):
+        """
+        Initialize threshold configuration.
+
+        Args:
+            real_threshold: Threshold below which audio is classified as REAL
+            suspicious_low: Lower bound for SUSPICIOUS range
+            suspicious_high: Upper bound for SUSPICIOUS range
+            synthetic_threshold: Threshold above which audio is classified as SYNTHETIC
+
+        Note: Thresholds are based on diagnostic benchmark results (AASIST-L optimal ~0.11)
+        These should be calibrated with proper validation dataset.
+        """
         self.real_threshold = real_threshold
         self.suspicious_low = suspicious_low
         self.suspicious_high = suspicious_high
