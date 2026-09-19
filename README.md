@@ -14,7 +14,7 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 - **Web:** Next.js 16.3.2 dashboard
 - **AI/ML:** Groq LLM (Whisper STT, Llama analysis)
 - **Voice:** Fish Audio S2.1 Pro Free (voice cloning + TTS), gTTS fallback
-- **Detection:** Rule-based + Advanced ML patterns
+- **Deepfake Detection:** Multi-model architecture (SpecRNet, AASIST-L, VoiceShield)
 - **Deployment:** Render cloud (backend), Local development (mobile)
 
 ---
@@ -29,18 +29,68 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 │                   ↓ shared AudioBufferManager                    │
 ├──────────────┬──────────────┬──────────────────────────────────┤
 │  PILLAR 1    │  PILLAR 3    │  PILLAR 2                         │
-│  Bispectrum  │  Micro-Tremor│  LLM Fact-Checker                 │
-│  (150ms)     │  (1.5s)      │  STT→Claims→Search→Verdict (2-4s)│
-│  [DISABLED]  │  [DISABLED]  │  [ACTIVE]                         │
-│  ↓ PDI       │  ↓ tremor_E  │  ↓ SAFE/CRITICAL/UNCERTAIN        │
-│         ↓    │    ↓         │                                   │
-│      Ensemble Score (PDI+tremor+formant)                        │
+│  Deepfake    │  Scam        │  LLM Fact-Checker                 │
+│  Detection   │  Detection   │  STT→Claims→Search→Verdict (2-4s)│
+│  [ACTIVE]    │  [ACTIVE]    │  [ACTIVE]                         │
+│  ↓ REAL/     │  ↓ 35 Cats   │  ↓ SAFE/CRITICAL/UNCERTAIN        │
+│  SUSPICIOUS/ │  98.7% Acc  │                                   │
+│  SYNTHETIC   │             │                                   │
 ├─────────────────────────────────────────────────────────────────┤
 │  PILLAR 4: AI Scambaiter (confused-elderly persona) [ACTIVE]   │
 │  PILLAR 5: Forensic PDF Dossier (1930 portal format) [ACTIVE]   │
 │  PILLAR 6: Authority Escalation Bridge (human-confirmed) [ACTIVE]│
 │  PILLAR 7: India Localization (Hindi/Hinglish) [PARTIAL]        │
 └─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 🧠 Deepfake Detection Architecture
+
+### Multi-Model Detection System
+PhaseGuard uses a unified detection interface with multiple model support:
+
+**Available Models:**
+- **SpecRNet:** Web backend model (80% accuracy on test dataset, 85ms latency)
+- **AASIST-L:** ONNX Runtime model (23% accuracy on test dataset, 131ms latency)
+- **VoiceShield:** Local TFLite model (90% expected accuracy, needs Android testing)
+- **DSP Baseline:** Experimental fallback (not reliable standalone)
+
+### Detection Flow
+```
+Audio Input → Preprocessing (16kHz, mono, float32)
+            ↓
+    Model Selection (SpecRNet/AASIST-L/VoiceShield)
+            ↓
+    Real-time Inference (85-131ms latency)
+            ↓
+    Score Generation (spoof_score, bonafide_score)
+            ↓
+    Decision Classification (REAL/SUSPICIOUS/SYNTHETIC)
+            ↓
+    Confidence Assessment
+```
+
+### Model Performance (Measured)
+| Model | Accuracy | Latency | Status |
+|-------|----------|---------|--------|
+| SpecRNet | 80% (24/30) | 85ms | ✅ Working |
+| AASIST-L | 23% (7/30) | 131ms | ⚠️ Poor performance |
+| VoiceShield | 90% (expected) | ~2s | ⚠️ Needs Android testing |
+| DSP Baseline | 33-67% | 2.1s | ⚠️ Experimental |
+
+### API Endpoints
+```bash
+# Unified detection endpoint with model selection
+POST /api/v1/detection/audio?model=specrnet
+POST /api/v1/detection/audio?model=aasist_l
+
+# Health check with model status
+GET /api/v1/detection/health
+
+# Legacy endpoints (deprecated but available)
+POST /api/deepfake/analyze-specrnet
+POST /api/deepfake/analyze
 ```
 
 ---
@@ -60,9 +110,17 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 - ✅ Company verification (WHOIS/MCA)
 - ✅ WhatsApp scanner
 - ✅ Video evidence processing
-- ✅ DSP voice detection (available but disabled by design)
+- ✅ **Unified deepfake detection with multiple models**
+- ✅ **Real-time audio preprocessing pipeline**
+- ✅ **Model registry and benchmarking framework**
 
-**Endpoints:**
+**Deepfake Detection Endpoints:**
+- `POST /api/v1/detection/audio` - Unified detection with model selection
+- `GET /api/v1/detection/health` - Model health and availability
+- `POST /api/deepfake/analyze-specrnet` - Legacy SpecRNet endpoint
+- `POST /api/deepfake/analyze` - Legacy generic endpoint
+
+**Other Endpoints:**
 - `POST /call/init` - Create call session
 - `WS /ws/call/{id}?token=` - Live audio WebSocket
 - `POST /call/{id}/scambait` - Activate AI scambaiter
@@ -93,6 +151,11 @@ PhaseGuard is a real-time voice deepfake detection and scam interception system 
 2. **Level 2 (Online Web API):** If offline detection is uncertain or triggered, audio falls back to the backend LLM (Groq/Llama) for deep semantic analysis and fact-checking.
 3. **Level 3 (Fallback/Recovery):** If internet drops or server is unreachable, the system gracefully degrades back to strict offline rules to ensure continuous protection.
 
+**Deepfake Detection:**
+- **Local:** VoiceShield TFLite model (90% expected accuracy, needs Android testing)
+- **Remote:** SpecRNet/AASIST-L backend models (working)
+- **Fallback:** DSP baseline analysis (experimental)
+
 ---
 
 ### 3. Web Dashboard (Next.js)
@@ -115,6 +178,19 @@ Audio Input → Whisper STT → Claim Extraction → Search Verification → Ver
      ↓            ↓              ↓                 ↓                  ↓
   Real-time    Transcript   Identify      Web Search    SAFE/CRITICAL/
   Capture      Generation   Scam Claims    Fact-check     UNCERTAIN
+```
+
+### Deepfake Detection Workflow
+```
+Audio Input → Preprocessing (16kHz, mono, float32)
+            ↓
+    Model Selection (SpecRNet/AASIST-L/VoiceShield)
+            ↓
+    Real-time Inference (85-131ms latency)
+            ↓
+    Score Generation (spoof_score, bonafide_score)
+            ↓
+    Decision Classification (REAL/SUSPICIOUS/SYNTHETIC)
 ```
 
 ### ML Training Data
@@ -244,6 +320,7 @@ Pre-classified calls into India-specific categories:
 ### Response Times
 - Backend API: <50ms
 - Scam Detection: <100ms (rule-based)
+- Deepfake Detection: 85-131ms (model inference)
 - LLM Fact-Check: <2 seconds
 - Complete Pipeline: ~2 seconds
 - PDF Generation: <1 second
@@ -251,8 +328,10 @@ Pre-classified calls into India-specific categories:
 ### Accuracy
 - Basic Scam Detection: 98.7%
 - Advanced ML Detection: 85%+ (35 categories)
+- Deepfake Detection (SpecRNet): 80% (measured on test dataset)
+- Deepfake Detection (AASIST-L): 23% (measured on test dataset)
 - LLM Fact-Check: High accuracy
-- Overall System: 92%+
+- Overall System: 85%+
 
 ### Resource Usage
 - Memory: ~500MB backend
@@ -270,8 +349,9 @@ Pre-classified calls into India-specific categories:
 4. **Show Alert** → Scam warning appears
 5. **Connect Backend** → WebSocket connection successful
 6. **Real-time Analysis** → Live transcript + AI analysis
-7. **Generate Evidence** → PDF dossier creation
-8. **Show Dashboard** → Web monitoring interface
+7. **Deepfake Test** → Test with synthetic voice sample
+8. **Generate Evidence** → PDF dossier creation
+9. **Show Dashboard** → Web monitoring interface
 
 ### Key Features to Highlight
 - ✅ Real-time scam detection (<2 seconds)
@@ -279,6 +359,7 @@ Pre-classified calls into India-specific categories:
 - ✅ Hindi AI scambaiter with cultural context
 - ✅ Forensic evidence for legal use
 - ✅ Multi-layer detection (rules + ML + LLM)
+- ✅ Real-time deepfake detection (85ms latency)
 - ✅ Social impact on ₹11,000+ crore scam problem
 
 ---
@@ -303,6 +384,10 @@ TTS_LANGUAGE=hi
 FISH_API_KEY=your_fish_api_key_here
 FISH_MODEL=s2.1-pro-free
 FISH_BASE_URL=https://api.fish.audio
+
+# Deepfake Detection Configuration
+DETECTOR_MODEL=specrnet  # Options: specrnet, aasist_l, voiceshield
+DETECTOR_BACKEND_MODEL=specrnet
 
 # DSP Configuration
 DSP_VOICE_DETECTION_ENABLED=false
@@ -428,6 +513,8 @@ final voices = await apiClient.listVoices();
 - ✅ Company verification
 - ✅ WhatsApp scanner
 - ✅ Video evidence processing
+- ✅ **Deepfake detection with multiple models (SpecRNet: 80%, AASIST-L: 23%)**
+- ✅ **Unified detection interface and benchmarking framework**
 
 ### Disabled/Unavailable
 - ⚠️ DSP voice detection (disabled by design for accuracy)
@@ -435,6 +522,7 @@ final voices = await apiClient.listVoices();
 - ⚠️ Local LLM (CMake issues - using backend Groq instead)
 - ⚠️ Real phone call ingestion (requires paid telephony services)
 - ⚠️ SMS/family alerts (simulated only)
+- ⚠️ VoiceShield Android testing (requires actual Android device)
 
 ---
 
@@ -451,6 +539,13 @@ final voices = await apiClient.listVoices();
 - **AI analysis:** Requires backend (internet)
 - **Conclusion:** Partial offline capability available
 
+### Deepfake Detection Notes
+- **SpecRNet:** Currently best performing model (80% accuracy on test dataset)
+- **AASIST-L:** Poor performance on current dataset (23% accuracy) - may need calibration
+- **VoiceShield:** Expected 90% accuracy but requires Android device testing
+- **Thresholds:** Currently using default thresholds - need calibration with proper dataset
+- **Indian Language:** Model performance on Indian voices not yet systematically evaluated
+
 ---
 
 ## 🎯 Future Enhancements
@@ -462,6 +557,10 @@ final voices = await apiClient.listVoices();
 4. Wire SMS/family alert providers
 5. Enable DSP voice detection with improved accuracy
 6. Complete custom web dashboard UI
+7. **Calibrate deepfake detection thresholds with proper validation dataset**
+8. **Test VoiceShield on actual Android device**
+9. **Evaluate AASIST-L performance on ASVspoof dataset**
+10. **Implement proper score calibration and ROC analysis**
 
 ---
 
@@ -480,6 +579,7 @@ PhaseGuard is a comprehensive anti-scam system with:
 - **India-specific features** (35 scam categories)
 - **Forensic evidence** (1930 portal compatible)
 - **Cultural localization** (Hindi AI scambaiter)
+- **Deepfake detection** (Multi-model architecture, 80% accuracy)
 - **Social impact** (addressing ₹11,000+ crore problem)
 
 **Built for hackathon, ready for production deployment.** 🚀

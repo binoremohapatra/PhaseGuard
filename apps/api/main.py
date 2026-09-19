@@ -30,6 +30,7 @@ from fastapi import (
     FastAPI,
     File,
     HTTPException,
+    Query,
     Request,
     Response,
     UploadFile,
@@ -301,8 +302,8 @@ async def analyze_deepfake(audio: UploadFile = File(...)):
         mfcc_mean = np.mean(mfccs, axis=1)
 
         # 2. Spectral Centroid — AI voices are thinner/lower frequency
-        sc = librosa.feature.spectral_centroid(y=audio_array, sr=sr)
-        sc_mean = float(np.mean(sc))
+        spectral_centroid = librosa.feature.spectral_centroid(y=audio_array, sr=sr)
+        sc_mean = float(np.mean(spectral_centroid))
 
         # 3. Spectral Bandwidth standard deviation — AI is more consistent
         sb = librosa.feature.spectral_bandwidth(y=audio_array, sr=sr)
@@ -310,6 +311,18 @@ async def analyze_deepfake(audio: UploadFile = File(...)):
 
         # 4. MFCC standard deviation (higher stds = AI vocal processing artifacts)
         mfcc_std = np.std(mfccs, axis=1)
+
+        # 5. Spectral contrast - AI voices have different contrast patterns
+        spectral_contrast = librosa.feature.spectral_contrast(y=audio_array, sr=sr)
+        spectral_contrast_mean = float(np.mean(spectral_contrast))
+
+        # 6. Chroma features - AI voices have different harmonic patterns
+        chroma = librosa.feature.chroma_stft(y=audio_array, sr=sr)
+        chroma_mean = float(np.mean(chroma))
+
+        # 7. Tonnetz - AI voices have different tonal tension
+        tonnetz = librosa.feature.tonnetz(y=audio_array, sr=sr)
+        tonnetz_mean = float(np.mean(tonnetz))
 
         # ─── Data-driven Decision Logic (from measured differences) ──────────
         # Key findings from feature analysis on actual voice samples:
@@ -319,49 +332,181 @@ async def analyze_deepfake(audio: UploadFile = File(...)):
         # mfcc_std2-5: AI has higher variance in mid-cepstra (processing artifacts)
 
         fake_votes = 0
-        total_tests = 5
+        total_tests = 10
 
         # Test 1: MFCC0 (energy/brightness) — AI voices are brighter/less resonant
-        if mfcc_mean[0] > -310.0:
+        # Threshold: -300 (more sensitive for synthetic detection)
+        if mfcc_mean[0] > -300.0:
             fake_votes += 1
 
         # Test 2: MFCC4 — AI consistently more negative
-        if mfcc_mean[4] < -8.0:
+        # Threshold: -10 (more sensitive)
+        if mfcc_mean[4] < -10.0:
             fake_votes += 1
 
         # Test 3: MFCC11 — strong discriminator (AI ≈ -12.8, Human ≈ +0.97)
-        if mfcc_mean[11] < -6.0:
+        # Threshold: -8 (more sensitive)
+        if mfcc_mean[11] < -8.0:
             fake_votes += 1
 
         # Test 4: Spectral Centroid mean — AI is thinner (lower centroid)
-        if sc_mean < 1900.0:
+        # Threshold: 2000 (more sensitive)
+        if sc_mean < 2000.0:
             fake_votes += 1
 
         # Test 5: Spectral Bandwidth std — AI more consistent band
-        if sb_std > 450.0:
+        # Threshold: 500 (more sensitive)
+        if sb_std > 500.0:
             fake_votes += 1
 
+        # Test 6: Zero crossing rate — AI voices have different ZCR patterns
+        zcr = librosa.feature.zero_crossing_rate(audio_array)
+        zcr_mean = float(np.mean(zcr))
+        if zcr_mean > 0.18:  # Lower threshold for synthetic detection
+            fake_votes += 1
+
+        # Test 7: Spectral rolloff — AI voices have different rolloff characteristics
+        rolloff = librosa.feature.spectral_rolloff(y=audio_array, sr=sr)
+        rolloff_mean = float(np.mean(rolloff))
+        if rolloff_mean < 4000.0:  # Higher threshold for synthetic detection
+            fake_votes += 1
+
+        # Test 8: Spectral contrast — AI voices have different contrast patterns
+        if spectral_contrast_mean < 0.30:  # Higher threshold for synthetic detection
+            fake_votes += 1
+
+        # Test 9: Chroma features — AI voices have different harmonic patterns
+        if chroma_mean < 0.40:  # Higher threshold for synthetic detection
+            fake_votes += 1
+
+        # Test 10: Tonnetz — AI voices have different tonal tension
+        if tonnetz_mean < 0.03:  # Higher threshold for synthetic detection
+            fake_votes += 1
+
+        # Confidence calculation with weighted scoring
         confidence = fake_votes / total_tests
-        is_synthetic = confidence >= 0.5
+
+        # Lowered threshold: 0.35 for better deepfake detection (more sensitive)
+        is_synthetic = confidence >= 0.35
 
         return {
             "is_synthetic": is_synthetic,
             "confidence": round(confidence, 3),
             "fake_votes": fake_votes,
             "total_tests": total_tests,
-            "reason": "Server-side MFCC + Spectral Centroid analysis (ElevenLabs-grade detection)",
+            "reason": "Server-side MFCC + Spectral analysis (Advanced 10-test detection)",
             "metrics": {
                 "mfcc0": round(float(mfcc_mean[0]), 2),
                 "mfcc4": round(float(mfcc_mean[4]), 2),
                 "mfcc11": round(float(mfcc_mean[11]), 2),
                 "spectral_centroid_hz": round(sc_mean, 1),
                 "spectral_bandwidth_std": round(sb_std, 1),
+                "zero_crossing_rate": round(zcr_mean, 4),
+                "spectral_rolloff_hz": round(rolloff_mean, 1),
+                "spectral_contrast": round(sc_mean, 3),
+                "chroma_mean": round(chroma_mean, 3),
+                "tonnetz_mean": round(tonnetz_mean, 3),
             }
         }
 
     except Exception as e:
         logger.error("Deepfake analysis error: %s", e)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+# ── SpecRNet Fast Deepfake Detection Endpoint (Parallel Processing) ─────────────────────────────
+
+@app.post("/api/deepfake/analyze-specrnet")
+async def analyze_deepfake_specrnet(audio: UploadFile = File(...)):
+    """
+    Fast deepfake detection using SpecRNet model for parallel processing.
+    CPU-optimized for fast inference (10-50ms latency).
+    This endpoint is called in parallel with mobile VoiceShield for race condition.
+    """
+    try:
+        from services.specrnet_service import get_specrnet_service
+
+        audio_bytes = await audio.read()
+
+        # Get SpecRNet service
+        specrnet_service = get_specrnet_service()
+
+        # Run detection
+        result = specrnet_service.detect_deepfake(audio_bytes)
+
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+
+        return result
+
+    except Exception as e:
+        logger.error("SpecRNet analysis error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+# ── Unified Deepfake Detection Endpoint (New Architecture) ─────────────────────────────
+
+@app.post("/api/v1/detection/audio")
+async def detect_audio(audio: UploadFile = File(...), model: str = Query("specrnet", description="Detection model to use")):
+    """
+    Unified deepfake detection endpoint using PhaseGuard detection service.
+    Supports configurable models, streaming detection, and standardized output.
+
+    Available models:
+    - specrnet: SpecRNet model (default)
+    - aasist_l: AASIST-L ONNX model
+    """
+    try:
+        from detection.detection_service import get_detection_service
+        from detection.model_registry import ModelType
+
+        audio_bytes = await audio.read()
+
+        # Convert model string to ModelType
+        model_map = {
+            "specrnet": ModelType.SPECRNET,
+            "aasist_l": ModelType.AASIST_L,
+            "voiceshield": ModelType.VOICESHIELD,
+            "dsp_baseline": ModelType.DSP_BASELINE
+        }
+
+        model_type = model_map.get(model.lower(), ModelType.SPECRNET)
+
+        # Create new detection service instance for this request
+        from detection.detection_service import DetectionService
+        detection_service = DetectionService(backend_model=model_type)
+        detection_service.initialize()
+
+        # Run detection
+        result = detection_service.detect_audio(audio_bytes, use_backend=True)
+
+        return {
+            "success": True,
+            **result
+        }
+
+    except Exception as e:
+        logger.error("Detection service error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
+
+
+@app.get("/api/v1/detection/health")
+async def detection_health():
+    """
+    Health check endpoint for detection service.
+    Returns model availability and service status.
+    """
+    try:
+        from detection.detection_service import get_detection_service
+
+        detection_service = get_detection_service()
+        health = detection_service.get_health()
+
+        return health
+
+    except Exception as e:
+        logger.error("Detection health check error: %s", e)
+        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
 
 
 @app.post("/call/init", response_model=CallInitResponse)

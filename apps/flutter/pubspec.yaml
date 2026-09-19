@@ -82,6 +82,7 @@ flutter:
     - assets/models/scam_detector.tflite
     - assets/models/tflite_metadata.json
     - assets/models/deepfake_detector.tflite
+    - assets/models/deepfake/voiceshield_ast_v1.tflite
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

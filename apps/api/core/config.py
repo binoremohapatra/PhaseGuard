@@ -93,6 +93,48 @@ class Settings(BaseSettings):
         description="PostgreSQL database URL (asyncpg driver for async support)"
     )
 
+    # ── Deepfake Detection Configuration ─────────────────────────────────────
+    detection_window_seconds: float = Field(
+        default=3.0,
+        description="Detection window duration in seconds (3-6)"
+    )
+    detection_hop_seconds: float = Field(
+        default=1.0,
+        description="Detection hop duration in seconds (0.5-2.0)"
+    )
+    min_suspicious_windows: int = Field(
+        default=2,
+        description="Minimum windows for SUSPICIOUS decision"
+    )
+    min_synthetic_windows: int = Field(
+        default=3,
+        description="Minimum windows for SYNTHETIC decision"
+    )
+    detector_mobile_model: str = Field(
+        default="voiceshield",
+        description="Mobile detection model (voiceshield, aasist_l)"
+    )
+    detector_backend_model: str = Field(
+        default="specrnet",
+        description="Backend detection model (specrnet, aasist, rawnet2)"
+    )
+    detection_real_threshold: float = Field(
+        default=0.3,
+        description="Threshold for REAL decision"
+    )
+    detection_suspicious_low: float = Field(
+        default=0.3,
+        description="Lower threshold for SUSPICIOUS decision"
+    )
+    detection_suspicious_high: float = Field(
+        default=0.7,
+        description="Upper threshold for SUSPICIOUS decision"
+    )
+    detection_synthetic_threshold: float = Field(
+        default=0.7,
+        description="Threshold for SYNTHETIC decision"
+    )
+
     # ── WhatsApp (text scanner) ────────────────────────────────────────────────
     whatsapp_phone_number_id: str = Field(default="")
     whatsapp_access_token: str = Field(default="")
@@ -250,12 +292,12 @@ class Settings(BaseSettings):
                 print(f"[OK] Fish Audio TTS: ACTIVE (model={self.fish_model})")
             else:
                 print("[WARN] Fish Audio TTS: NOT CONFIGURED (add FISH_API_KEY)")
-            
+
             if self.sonex_api_key:
-                print(f"[OK] Sonex Pāṇini TTS: ACTIVE")
+                print(f"[OK] Sonex TTS: ACTIVE")
             else:
-                print("[WARN] Sonex Pāṇini TTS: NOT CONFIGURED (add SONEX_API_KEY)")
-                
+                print("[WARN] Sonex TTS: NOT CONFIGURED (add SONEX_API_KEY)")
+
             if self.sarvam_api_key:
                 print(f"[OK] Sarvam Bulbul V3 TTS: ACTIVE")
             else:
