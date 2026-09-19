@@ -105,6 +105,26 @@ class CallSocket {
     });
   }
 
+  void sendBytes(List<int> bytes) {
+    if (_channel != null) {
+      try {
+        _channel!.sink.add(bytes);
+      } catch (e) {
+        // Socket sink error
+      }
+    }
+  }
+
+  void sendJson(Map<String, dynamic> json) {
+    if (_channel != null) {
+      try {
+        _channel!.sink.add(jsonEncode(json));
+      } catch (e) {
+        // Socket sink error
+      }
+    }
+  }
+
   Future<void> disconnect() async {
     _stopKeepalive();
     await _sub?.cancel();

@@ -8,8 +8,8 @@ class PgTheme {
     final inter = GoogleFonts.interTextTheme(
       ThemeData.dark().textTheme,
     ).apply(
-      bodyColor: PgColors.textPrimary,
-      displayColor: PgColors.textPrimary,
+      bodyColor: PgColors.lightBlue,
+      displayColor: PgColors.white,
     );
 
     return ThemeData(
@@ -19,9 +19,9 @@ class PgTheme {
       textTheme: inter,
       colorScheme: const ColorScheme.dark(
         surface: PgColors.bgPrimary,
-        primary: PgColors.accent,
-        secondary: PgColors.accentDim,
-        error: PgColors.scam,
+        primary: PgColors.accentBlue,
+        secondary: PgColors.mediumBlue,
+        error: PgColors.crit,
       ),
     );
   }
@@ -29,7 +29,7 @@ class PgTheme {
   static TextStyle display({
     double size = 14,
     FontWeight weight = FontWeight.w600,
-    Color color = PgColors.textPrimary,
+    Color color = PgColors.white,
     double? letterSpacing,
     double? height,
   }) {
@@ -45,7 +45,7 @@ class PgTheme {
   static TextStyle body({
     double size = 12,
     FontWeight weight = FontWeight.w500,
-    Color color = PgColors.textSecondary,
+    Color color = PgColors.mediumBlue,
     double? letterSpacing,
     double? height,
   }) {

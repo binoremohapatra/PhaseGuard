@@ -14,30 +14,13 @@ class PgColors {
   static const accentGlow = Color(0x3300D4FF); // 20% opacity glow
 
   // Semantic states
-  // Electric Teal = Neutral Brand / System UI / AI Scambaiter
-  // Green = Safe / Verified / Active only
-  // Amber = Suspicious / Warning / Review only
-  // Red = Scam / Danger / Critical Threat only
   static const safe = Color(0xFF22C55E); // Green
   static const safeDim = Color(0xFF166534);
-  static const safeGlow = Color(0x4022C55E); // 25% glow
   static const suspicious = Color(0xFFF59E0B); // Amber
   static const suspiciousDim = Color(0xFF92400E);
-  static const suspiciousGlow = Color(0x33F59E0B);
   static const scam = Color(0xFFEF4444); // Red
   static const scamDim = Color(0xFF991B1B);
   static const scamGlow = Color(0x40EF4444);
-
-  // Hero Card Gradients & Glows
-  static const heroCardGradient = [
-    Color(0xFF112338),
-    Color(0xFF0D1B2A),
-    Color(0xFF0F2428),
-  ];
-  static const cyberCardGradient = [
-    Color(0xFF131D31),
-    Color(0xFF0F1726),
-  ];
 
   // Text
   static const textPrimary = Color(0xFFF1F5F9);
@@ -97,9 +80,3 @@ class PgSpace {
   static const lg = 24.0;
   static const xl = 32.0;
 }
-
-class PgAssets {
-  static const String backgroundGif = 'assets/background.gif';
-  static const String backgroundGifOriginal = 'assets/Loop Render GIF by xponentialdesign.gif';
-}
-

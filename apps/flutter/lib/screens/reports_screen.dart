@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../state/session_controller.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
@@ -53,14 +55,83 @@ class _ReportsScreenState extends State<ReportsScreen> {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: const SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(horizontal: PgSpace.screenH),
-            child: _ReportsListView(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Download Dossier Button
+              Consumer<SessionController>(
+                builder: (context, session, _) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: PgSpace.screenH, vertical: 16),
+                    child: GestureDetector(
+                      onTap: session.callId != null ? () => _downloadDossier(context, session) : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: session.callId != null ? PgColors.primaryBtn : PgColors.primaryBtn.map((c) => c.withValues(alpha: 0.3)).toList(),
+                          ),
+                          borderRadius: BorderRadius.circular(PgRadii.bar),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.description,
+                              color: session.callId != null ? PgColors.white : PgColors.mediumBlue,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              session.callId != null ? 'Download Forensic Dossier' : 'Start a call to download dossier',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: session.callId != null ? PgColors.white : PgColors.mediumBlue,
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: PgSpace.screenH),
+                  child: const _ReportsListView(),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _downloadDossier(BuildContext context, SessionController session) async {
+    try {
+      final pdfBytes = await session.getDossier();
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dossier downloaded: ${pdfBytes.length} bytes'),
+            backgroundColor: PgColors.safe,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download dossier: $e'),
+            backgroundColor: PgColors.crit,
+          ),
+        );
+      }
+    }
   }
 }
 

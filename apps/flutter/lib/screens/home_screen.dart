@@ -5,6 +5,7 @@ import '../state/session_controller.dart';
 import '../theme/tokens.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/section_title.dart';
+import '../widgets/app_background.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -15,55 +16,37 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   @override
-  void initState() {
-    super.initState();
-    // Initialize session on first build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final session = context.read<SessionController>();
-      if (session.callId == null && !session.connecting) {
-        session.startSession();
-      }
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: PgColors.screenGradient,
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
+      backgroundColor: Colors.transparent,
+      body: AppBackground(
         child: SafeArea(
           child: Consumer<SessionController>(
-            builder: (context, session, _) {
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: PgSpace.screenH),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
-                    _buildHeader(session),
-                    const SizedBox(height: PgSpace.section),
-                    _buildProtectionCard(session),
-                    const SizedBox(height: PgSpace.section),
-                    _buildCallStatus(session),
-                    const SizedBox(height: PgSpace.section),
-                    if (session.wsConnected) _buildFactCheckWidget(session),
-                    const SizedBox(height: PgSpace.section),
-                    _buildActionButtons(context, session),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              );
-            },
+                builder: (context, session, _) {
+                  return SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: PgSpace.screenH),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildHeader(session),
+                        const SizedBox(height: PgSpace.section),
+                        _buildProtectionCard(session),
+                        const SizedBox(height: PgSpace.section),
+                        _buildCallStatus(session),
+                        const SizedBox(height: PgSpace.section),
+                        if (session.wsConnected) _buildFactCheckWidget(session),
+                        const SizedBox(height: PgSpace.section),
+                        _buildActionButtons(context, session),
+                        const SizedBox(height: 100),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
-        ),
-      ),
-    );
+        );
   }
 
   Widget _buildHeader(SessionController session) {
@@ -473,7 +456,36 @@ class _HomeScreenState extends State<HomeScreen> {
               }
             },
             child: const Text(
-              'Confirm',
+              'Draft Report',
+              style: TextStyle(color: PgColors.warning),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await session.escalateToCybercell();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Escalated to 1930 Cybercell'),
+                      backgroundColor: PgColors.safe,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: $e'),
+                      backgroundColor: PgColors.crit,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text(
+              'Escalate to 1930',
               style: TextStyle(color: PgColors.crit),
             ),
           ),

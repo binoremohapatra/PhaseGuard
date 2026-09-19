@@ -2,6 +2,10 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // Shizuku Maven repository
+        maven {
+            url = uri("https://raw.githubusercontent.com/RikkaApps/Shizuku-API/master/maven")
+        }
     }
 }
 
