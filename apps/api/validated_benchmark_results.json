@@ -1,0 +1,70 @@
+{
+  "detailed_results": {
+    "SPECRNET": {
+      "accuracy": 0.5,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "roc_auc": 0.8611111111111112,
+      "eer": 0.3333333333333333,
+      "eer_threshold": 0.49743250012397766,
+      "far": 0.0,
+      "frr": 1.0,
+      "synthetic_recall": 0.0,
+      "false_negative_rate": 1.0,
+      "confusion_matrix": {
+        "tp": 0,
+        "tn": 30,
+        "fp": 0,
+        "fn": 30
+      },
+      "cold_latency_ms": 2686.998963356018,
+      "warm_avg_latency_ms": 2100.5932331085205,
+      "warm_p50_latency_ms": 2058.1027269363403,
+      "warm_p95_latency_ms": 2515.6359791755676,
+      "memory_mb": -0.00026041666666666666,
+      "total_samples": 12,
+      "successful_samples": 60,
+      "failed_samples": 0,
+      "failure_rate": 0.0,
+      "failed_sample_details": [],
+      "benchmark_status": "VALID"
+    },
+    "AASIST_L": {
+      "accuracy": 0.3333333333333333,
+      "precision": 0.25,
+      "recall": 0.16666666666666666,
+      "f1": 0.2,
+      "roc_auc": 0.36111111111111116,
+      "eer": 0.5,
+      "eer_threshold": 0.03832940757274628,
+      "far": 0.5,
+      "frr": 0.8333333333333334,
+      "synthetic_recall": 0.16666666666666666,
+      "false_negative_rate": 0.8333333333333334,
+      "confusion_matrix": {
+        "tp": 5,
+        "tn": 15,
+        "fp": 15,
+        "fn": 25
+      },
+      "cold_latency_ms": 2187.685012817383,
+      "warm_avg_latency_ms": 2184.3965212504067,
+      "warm_p50_latency_ms": 2142.9158449172974,
+      "warm_p95_latency_ms": 2586.4044189453125,
+      "memory_mb": 0.0014973958333333334,
+      "total_samples": 12,
+      "successful_samples": 60,
+      "failed_samples": 0,
+      "failure_rate": 0.0,
+      "failed_sample_details": [],
+      "benchmark_status": "VALID"
+    }
+  },
+  "methodology": {
+    "preprocessing": "16kHz mono float32",
+    "validation": "Strict - failed samples excluded from metrics",
+    "scoring": "Only successful inferences scored",
+    "api_version": "validated"
+  }
+}

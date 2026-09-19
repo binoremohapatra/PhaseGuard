@@ -5,7 +5,7 @@ Shared preprocessing pipeline for all detection models
 import numpy as np
 import librosa
 import io
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict
 import soundfile as sf
 
 
@@ -24,6 +24,69 @@ class AudioPreprocessor:
         self.target_duration = target_duration
         self.target_samples = int(target_sr * target_duration)
 
+    def validate_audio_file(self, file_path: str) -> Dict:
+        """
+        Validate audio file before processing.
+
+        Args:
+            file_path: Path to audio file
+
+        Returns:
+            Validation metadata dictionary
+        """
+        import os
+        metadata = {
+            "file": file_path,
+            "valid": False,
+            "error": None,
+            "format": None,
+            "sample_rate": None,
+            "channels": None,
+            "duration": None,
+            "samples": None
+        }
+
+        try:
+            # Check file exists
+            if not os.path.exists(file_path):
+                metadata["error"] = "File does not exist"
+                return metadata
+
+            # Try to get audio info
+            info = sf.info(file_path)
+            metadata["format"] = info.format
+            metadata["sample_rate"] = info.samplerate
+            metadata["channels"] = info.channels
+            metadata["duration"] = info.duration
+            metadata["samples"] = info.frames
+
+            # Validate basic properties
+            if info.duration <= 0:
+                metadata["error"] = "Invalid duration (<= 0)"
+                return metadata
+
+            if info.samplerate <= 0:
+                metadata["error"] = "Invalid sample rate (<= 0)"
+                return metadata
+
+            # Try to actually load audio
+            audio, sr = librosa.load(file_path, sr=None, mono=True)
+
+            if len(audio) == 0:
+                metadata["error"] = "No audio data loaded"
+                return metadata
+
+            if not np.all(np.isfinite(audio)):
+                metadata["error"] = "Audio contains NaN or Inf values"
+                return metadata
+
+            metadata["valid"] = True
+            return metadata
+
+        except Exception as e:
+            metadata["error"] = str(e)
+            return metadata
+
     def preprocess_audio_bytes(self, audio_bytes: bytes) -> np.ndarray:
         """
         Preprocess audio bytes to standardized format.
@@ -38,6 +101,13 @@ class AudioPreprocessor:
             # Load audio from bytes
             audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=None, mono=True)
 
+            # Validate audio
+            if len(audio) == 0:
+                raise ValueError("No audio data loaded from bytes")
+
+            if not np.all(np.isfinite(audio)):
+                raise ValueError("Audio contains NaN or Inf values")
+
             # Resample to target sample rate
             if sr != self.target_sr:
                 audio = librosa.resample(audio, orig_sr=sr, target_sr=self.target_sr)
@@ -51,8 +121,8 @@ class AudioPreprocessor:
             return audio.astype(np.float32)
 
         except Exception as e:
-            print(f"Error preprocessing audio: {e}")
-            raise
+            print(f"Error preprocessing audio bytes: {e}")
+            raise ValueError(f"Audio preprocessing failed: {str(e)}")
 
     def preprocess_audio_file(self, file_path: str) -> np.ndarray:
         """
@@ -68,6 +138,13 @@ class AudioPreprocessor:
             # Load audio file
             audio, sr = librosa.load(file_path, sr=None, mono=True)
 
+            # Validate audio
+            if len(audio) == 0:
+                raise ValueError(f"No audio data loaded from {file_path}")
+
+            if not np.all(np.isfinite(audio)):
+                raise ValueError(f"Audio contains NaN or Inf values in {file_path}")
+
             # Resample to target sample rate
             if sr != self.target_sr:
                 audio = librosa.resample(audio, orig_sr=sr, target_sr=self.target_sr)
@@ -81,8 +158,8 @@ class AudioPreprocessor:
             return audio.astype(np.float32)
 
         except Exception as e:
-            print(f"Error preprocessing audio file: {e}")
-            raise
+            print(f"Error preprocessing audio file {file_path}: {e}")
+            raise ValueError(f"Audio preprocessing failed for {file_path}: {str(e)}")
 
     def _pad_or_crop(self, audio: np.ndarray) -> np.ndarray:
         """Pad or crop audio to target duration."""

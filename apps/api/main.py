@@ -20,6 +20,7 @@ REST endpoints:
 """
 
 import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -85,6 +86,14 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Local ML model import failed (expected): {e} - using backend services instead")
     except Exception as e:
         logger.warning(f"Local ML model loading failed: {e} - using backend services instead")
+
+    # Initialize deepfake detection models (singleton - load once at startup)
+    try:
+        from detection.model_manager import get_model_manager
+        model_manager = get_model_manager()
+        logger.info("Deepfake detection models initialized successfully")
+    except Exception as e:
+        logger.warning(f"Deepfake detection model initialization failed: {e} - detection service unavailable")
 
     get_executor()  # Pre-create the ThreadPoolExecutor
     yield
@@ -457,34 +466,44 @@ async def detect_audio(audio: UploadFile = File(...), model: str = Query("specrn
     - aasist_l: AASIST-L ONNX model
     """
     try:
-        from detection.detection_service import get_detection_service
+        from detection.model_manager import get_model_manager
         from detection.model_registry import ModelType
 
         audio_bytes = await audio.read()
 
-        # Convert model string to ModelType
-        model_map = {
-            "specrnet": ModelType.SPECRNET,
-            "aasist_l": ModelType.AASIST_L,
-            "voiceshield": ModelType.VOICESHIELD,
-            "dsp_baseline": ModelType.DSP_BASELINE
-        }
+        # Get model manager singleton
+        model_manager = get_model_manager()
 
-        model_type = model_map.get(model.lower(), ModelType.SPECRNET)
+        # Convert model string to model key
+        model_key = model.lower()
 
-        # Create new detection service instance for this request
-        from detection.detection_service import DetectionService
-        detection_service = DetectionService(backend_model=model_type)
-        detection_service.initialize()
+        # Get cached model instance
+        detector = model_manager.get_model(model_key)
 
-        # Run detection
-        result = detection_service.detect_audio(audio_bytes, use_backend=True)
+        if detector is None:
+            raise HTTPException(status_code=400, detail=f"Model {model} not available")
+
+        # Preprocess audio bytes to numpy array
+        from detection.audio_preprocessor import get_audio_preprocessor
+        preprocessor = get_audio_preprocessor()
+        audio_array = preprocessor.preprocess_audio_bytes(audio_bytes)
+
+        # Run inference with cached model
+        start_time = time.time()
+        result = detector.predict(audio_array)
+        inference_time_ms = (time.time() - start_time) * 1000
+
+        # Add timing information
+        result['inference_time_ms'] = inference_time_ms
+        result['model_load_count'] = model_manager.get_load_count(model_key)
 
         return {
             "success": True,
             **result
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error("Detection service error: %s", e)
         raise HTTPException(status_code=500, detail=f"Detection failed: {str(e)}")
@@ -497,16 +516,25 @@ async def detection_health():
     Returns model availability and service status.
     """
     try:
-        from detection.detection_service import get_detection_service
+        from detection.model_manager import get_model_manager
 
-        detection_service = get_detection_service()
-        health = detection_service.get_health()
+        model_manager = get_model_manager()
+        status = model_manager.get_status()
 
-        return health
+        return {
+            "service": "deepfake-detector",
+            "is_initialized": status["is_initialized"],
+            "available_models": status["available_models"],
+            "models": status["models"]
+        }
 
     except Exception as e:
         logger.error("Detection health check error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Health check failed: {str(e)}")
+        return {
+            "service": "deepfake-detector",
+            "is_initialized": False,
+            "error": str(e)
+        }
 
 
 @app.post("/call/init", response_model=CallInitResponse)

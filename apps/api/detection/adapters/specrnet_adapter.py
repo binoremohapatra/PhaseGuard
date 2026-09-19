@@ -50,9 +50,15 @@ class SpecRNetAdapter(DeepfakeDetector):
         try:
             start_time = time.time()
 
-            # Convert audio array to bytes for SpecRNet service
-            # SpecRNet service expects bytes input
-            audio_bytes = (audio * 32767).astype(np.int16).tobytes()
+            # Convert audio array to WAV bytes for SpecRNet service
+            # SpecRNet service expects WAV file bytes, not raw PCM
+            import io
+            import soundfile as sf
+
+            # Create WAV bytes from numpy array
+            with io.BytesIO() as buffer:
+                sf.write(buffer, audio, self.preprocessor.target_sr, format='WAV')
+                audio_bytes = buffer.getvalue()
 
             # Run SpecRNet detection
             result = self.specrnet_service.detect_deepfake(audio_bytes)
