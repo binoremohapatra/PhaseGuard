@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_background.dart';
-import '../widgets/pg_gauge.dart';
 import '../widgets/pg_animations.dart';
 import '../widgets/pg_custom_icons.dart';
 import '../state/session_controller.dart';

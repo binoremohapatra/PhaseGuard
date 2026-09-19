@@ -6,8 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:speech_to_text/speech_recognition_result.dart';
+// import 'package:speech_to_text/speech_to_text.dart' as stt; // Temporarily disabled due to Gradle compatibility issues
+// import 'package:speech_to_text/speech_recognition_result.dart';
 
 import '../models/protocol.dart';
 import '../services/api_client.dart';
@@ -35,7 +35,7 @@ class SessionController extends ChangeNotifier {
   bool isOnline = true;
   AudioRecorder? _audioRecorder;
   StreamSubscription<List<int>>? _micStreamSub;
-  final stt.SpeechToText _speechToText = stt.SpeechToText();
+  // final stt.SpeechToText _speechToText = stt.SpeechToText(); // Temporarily disabled due to Gradle compatibility issues
   bool _sttInitialized = false;
 
   // Call audio capture via privileged VOICE_CALL source (Shizuku-granted)
@@ -677,7 +677,8 @@ class SessionController extends ChangeNotifier {
     // Start on-device speech recognition — this uses Android's SpeechRecognizer
     // which is more likely to work during phone calls than raw mic access.
     // It also drives the transcript and scam detection.
-    unawaited(_startLocalStt());
+    // Temporarily disabled due to Gradle compatibility issues
+    // unawaited(_startLocalStt());
 
     // During an active phone call, Android blocks raw mic access for third-party
     // apps. Don't even try record package during calls — let speech_to_text
@@ -733,8 +734,6 @@ class SessionController extends ChangeNotifier {
       } catch (e) {
         debugPrint('⚠️ Hardware mic error: $e');
       }
-    } else {
-      debugPrint('📞 Active call detected — skipping record package, using SpeechRecognizer only');
     }
 
     // Add timer-based decay for dynamic meter movement
@@ -764,95 +763,55 @@ class SessionController extends ChangeNotifier {
   /// On-device STT using Google Speech Recognition — provides live transcript
   /// even when the Render backend WebSocket is unreachable.
   Future<void> _startLocalStt() async {
-    try {
-      if (!_sttInitialized) {
-        _sttInitialized = await _speechToText.initialize(
-          onError: (error) => debugPrint('🎤 STT error: ${error.errorMsg}'),
-          onStatus: (status) => debugPrint('🎤 STT status: $status'),
-        );
-      }
-      if (!_sttInitialized) {
-        debugPrint('⚠️ On-device STT not available on this device');
-        return;
-      }
-      if (_speechToText.isListening) return;
+    // Speech-to-text temporarily disabled due to Gradle compatibility issues
+    debugPrint('⚠️ STT temporarily disabled');
+    return;
+  }
 
-      await _speechToText.listen(
-        onResult: _onSttResult,
-        listenMode: stt.ListenMode.dictation,
-        cancelOnError: false,
-        partialResults: true,
-        listenFor: const Duration(minutes: 30),
-        pauseFor: const Duration(seconds: 5),
-        localeId: 'en_IN', // Indian English — best for Indian callers
-      );
-      debugPrint('✅ On-device STT started (local Whisper fallback)');
-    } catch (e) {
-      debugPrint('⚠️ Could not start local STT: $e');
+  /// Start protection and audio pipeline for an active in-app call (Agora RTC)
+  Future<void> startInAppCallProtection({String? remotePartyName}) async {
+    callerNumber = remotePartyName ?? 'In-App Peer';
+    callerLocation = 'PhaseGuard Direct';
+    callState = 'ACTIVE';
+    _callStartTime = DateTime.now();
+    _peakPdiScore = 0.0;
+    notifyListeners();
+
+    if (!wsConnected && !connecting) {
+      await startSession(callerNumber: callerNumber);
     }
   }
 
-  void _onSttResult(SpeechRecognitionResult result) {
-    final text = result.recognizedWords.trim();
-    if (text.isEmpty) return;
-    debugPrint('🎤 STT: "$text" (final=${result.finalResult})');
+  /// Process and stream raw 16kHz 16-bit mono PCM chunks from an active in-app call
+  void processInAppCallAudioChunk(Uint8List chunk) {
+    if (chunk.isEmpty) return;
 
-    liveTranscript = text;
-    if (result.finalResult) {
-      transcriptHistory.add(text);
+    // Send binary PCM frame over WebSocket to PhaseGuard backend
+    if (wsConnected) {
+      _socket.sendBytes(chunk);
     }
 
-    // Make meters react to voice activity (visual feedback only)
-    final wordCount = text.split(' ').length;
-    tremorEnergy = (wordCount * 0.08).clamp(0.1, 0.85);
+    // Compute RMS and tremor energy for the live HUD meters
+    double sumSquares = 0;
+    final sampleCount = chunk.length ~/ 2;
+    final byteData = ByteData.sublistView(chunk);
+    for (int i = 0; i < sampleCount; i++) {
+      final val = byteData.getInt16(i * 2, Endian.little);
+      sumSquares += val * val;
+    }
+    final rms = sampleCount > 0 ? sqrt(sumSquares / sampleCount) / 32768.0 : 0.0;
+    tremorEnergy = (rms * 3.2).clamp(0.05, 0.98);
     hasTremor = tremorEnergy > 0.35;
-    peakTremorHz = 120.0 + wordCount * 5.0;
 
-    // Check for scam keywords and make meters red immediately
-    final lower = text.toLowerCase();
-    final scamKeywords = [
-      'irs', 'income tax', 'tax department', 'it department',
-      'badge number', 'officer', 'arrest warrant', 'arrest',
-      'back taxes', 'gift card', 'wire transfer', 'google play',
-      'otp', 'one time password', 'customs', 'package seized',
-      'trojan', 'virus', 'tech support', 'microsoft', 'amazon',
-      'police', 'cybercrime', 'narcotics', 'digital arrest',
-    ];
-    final matchedKeyword = scamKeywords.firstWhere(
-      (kw) => lower.contains(kw),
-      orElse: () => '',
-    );
-
-    if (matchedKeyword.isNotEmpty) {
-      // Immediate visual feedback - meters go red
-      pdiScore = 0.88;
-      isPotentialScam = true;
-      syntheticVoiceScore = 0.84;
-      factcheck = FactCheckUpdate(
-        status: 'CRITICAL',
-        message: '🚨 Detected: "$matchedKeyword" — $text',
-        ts: '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
-        category: 'SCAM_KEYWORD_DETECTED',
-        evidenceUrls: [],
-      );
-      debugPrint('🚨 Scam keyword "$matchedKeyword" detected - meters turned red');
-    } else {
-      // Normal speech - keep meters active but not red
-      if (wordCount > 0) {
-        final speechPdi = (wordCount * 0.05).clamp(0.0, 0.30);
-        if (speechPdi > pdiScore) {
-          pdiScore = speechPdi;
-          syntheticVoiceScore = pdiScore * 0.8;
-        }
+    // Baseline acoustic reactivity for HUD
+    if (!isPotentialScam && rms > 0.01) {
+      final volumePdi = (rms * 1.5).clamp(0.05, 0.35);
+      if (volumePdi > pdiScore) {
+        pdiScore = volumePdi;
+        syntheticVoiceScore = pdiScore * 0.8;
       }
     }
-
     notifyListeners();
-
-    // Forward recognized speech to backend for real analysis
-    if (result.finalResult && callId != null && token != null) {
-      _api.injectSpeech(callId: callId!, token: token!, text: text).ignore();
-    }
   }
 
   /// Start capturing VOICE_CALL audio via privileged native channel.
@@ -936,10 +895,10 @@ class SessionController extends ChangeNotifier {
         await _audioRecorder!.stop();
       }
     } catch (_) {}
-    // Stop local STT
-    try {
-      if (_speechToText.isListening) await _speechToText.stop();
-    } catch (_) {}
+    // Stop local STT - temporarily disabled due to Gradle compatibility issues
+    // try {
+    //   if (_speechToText.isListening) await _speechToText.stop();
+    // } catch (_) {}
     notifyListeners();
   }
 

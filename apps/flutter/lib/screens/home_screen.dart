@@ -457,7 +457,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             child: const Text(
               'Draft Report',
-              style: TextStyle(color: PgColors.warning),
+              style: TextStyle(color: PgColors.suspicious),
             ),
           ),
           TextButton(

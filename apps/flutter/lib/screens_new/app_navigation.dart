@@ -1,5 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/in_app_call.dart';
+import '../services/auth_service.dart';
+import '../services/call_signaling_service.dart';
+import '../services/in_app_calling_service.dart';
 import '../theme/tokens.dart';
 import '../widgets/app_background.dart';
 import '../widgets/pg_custom_icons.dart';
@@ -11,6 +16,9 @@ import 'ai_voice_analysis.dart';
 import 'scambaiter_session.dart';
 import 'call_history_logs.dart';
 import 'system_settings.dart';
+import 'call/protected_call_hub_screen.dart';
+import 'call/calling_setup_screen.dart';
+import 'call/incoming_call_screen.dart';
 
 class AppNavigation extends StatefulWidget {
   const AppNavigation({super.key});
@@ -22,12 +30,57 @@ class AppNavigation extends StatefulWidget {
 class _AppNavigationState extends State<AppNavigation> {
   int _currentIndex = 0;
   bool _showOverlay = false;
+  StreamSubscription<InAppCall?>? _incomingCallSub;
+  String? _listeningUserId;
+  bool _isShowingIncomingCall = false;
 
   final List<Widget> _screens = [
     const MainDashboard(),
     const CallHistoryLogs(),
     const SystemSettings(),
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _attachIncomingCallListener();
+  }
+
+  void _attachIncomingCallListener() {
+    final auth = context.watch<AuthService>();
+    final uid = auth.appUser?.uid;
+    if (uid == null || uid == _listeningUserId) return;
+
+    _listeningUserId = uid;
+    _incomingCallSub?.cancel();
+
+    final signaling = context.read<CallSignalingService>();
+    final calling = context.read<InAppCallingService>();
+
+    _incomingCallSub = signaling.listenForIncomingCalls(uid).listen((incomingCall) {
+      if (incomingCall != null && !_isShowingIncomingCall && mounted) {
+        _isShowingIncomingCall = true;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => IncomingCallScreen(
+              call: incomingCall,
+              signalingService: signaling,
+              callingService: calling,
+            ),
+          ),
+        ).then((_) {
+          _isShowingIncomingCall = false;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _incomingCallSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -572,6 +625,72 @@ class MainDashboard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: PgSpace.sm),
+        GestureDetector(
+          onTap: () {
+            final auth = context.read<AuthService>();
+            if (!auth.isAuthenticated) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const CallingSetupScreen()),
+              );
+            } else {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProtectedCallHubScreen()),
+              );
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.only(bottom: PgSpace.md),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0C243B), Color(0xFF0F172A)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(PgRadii.card),
+              border: Border.all(color: PgColors.accent.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: PgColors.accent.withValues(alpha: 0.15),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: PgColors.accent.withValues(alpha: 0.2),
+                  ),
+                  child: const Icon(Icons.phone_in_talk, color: PgColors.accent, size: 24),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'In-App Protected Calling',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: PgColors.textPrimary),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Direct peer call with live AI scam detection & HUD',
+                        style: TextStyle(fontSize: 11, color: PgColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, color: PgColors.accent, size: 14),
+              ],
+            ),
+          ),
+        ),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),

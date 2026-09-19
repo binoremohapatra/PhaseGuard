@@ -7,7 +7,12 @@ import '../models/protocol.dart';
 
 /// Same production host the React Native client uses.
 class ApiClient {
-  ApiClient({this.baseUrl = 'https://phaseguard.onrender.com'});
+  ApiClient({
+    this.baseUrl = const String.fromEnvironment(
+      'PHASEGUARD_BACKEND_URL',
+      defaultValue: 'https://phaseguard.onrender.com',
+    ),
+  });
 
   final String baseUrl;
 
