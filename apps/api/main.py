@@ -236,10 +236,11 @@ async def upload_audio_for_analysis(file: UploadFile = File(...)):
     - Scambaiter preparation
     """
     try:
-        from detection.multi_detector_fallback import detect_audio_bytes
+        from detection.multi_detector_fallback import detect_with_fallback
         import soundfile as sf
         import numpy as np
         import io
+        import torch
         
         # Read audio file
         audio_bytes = await file.read()
@@ -248,18 +249,34 @@ async def upload_audio_for_analysis(file: UploadFile = File(...)):
         audio_buffer = io.BytesIO(audio_bytes)
         audio, sr = sf.read(audio_buffer)
         
+        # Convert to torch tensor
+        waveform = torch.from_numpy(audio).float()
+        
         # Run deepfake detection
-        detection_result = await detect_audio_bytes(audio_bytes, sr)
+        detection_result = detect_with_fallback(waveform, audio_path=file.filename, use_ensemble=False)
+        
+        # Convert to dict
+        result_dict = {
+            "is_spoof": detection_result.is_spoof,
+            "spoof_score": float(detection_result.spoof_score),
+            "confidence": float(detection_result.confidence),
+            "detector": detection_result.detector,
+            "latency_ms": detection_result.latency_ms,
+            "error": detection_result.error,
+            "metadata": detection_result.metadata,
+        }
         
         return {
             "success": True,
             "audio_length": len(audio),
             "sample_rate": sr,
-            "deepfake_detection": detection_result,
+            "deepfake_detection": result_dict,
             "message": "Audio received, analysis complete"
         }
     except Exception as e:
         logger.error(f"Audio upload error: {e}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "error": str(e)
