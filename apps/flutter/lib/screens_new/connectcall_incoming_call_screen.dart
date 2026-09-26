@@ -64,13 +64,9 @@ class _ConnectCallIncomingCallScreenState extends ConsumerState<ConnectCallIncom
         backgroundColor: AppColors.primaryBackground,
         body: Stack(
           children: [
-            // Animated GIF Background
+            // Subtle dark background
             const Positioned.fill(
-              child: AnimatedGifBackground(
-                assetPath: 'connectcall_assets/background/incoming_call_bg.gif',
-                overlayOpacity: 0.4,
-                child: SizedBox.shrink(),
-              ),
+              child: AnimatedGradientBg(preset: GradientPreset.subtle),
             ),
 
             SafeArea(

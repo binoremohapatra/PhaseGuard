@@ -14,13 +14,11 @@ class PhaseGuardLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget image = ClipOval(
-      child: Image.asset(
-        'assets/logo.png',
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-      ),
+    Widget image = Image.asset(
+      'assets/logo.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
     );
 
     if (showGlow) {
@@ -31,10 +29,10 @@ class PhaseGuardLogo extends StatelessWidget {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: glowColor.withValues(alpha: 0.5),
-              blurRadius: size * 0.4,
+              color: glowColor.withValues(alpha: 0.45),
+              blurRadius: size * 0.35,
               spreadRadius: 2,
-              offset: Offset(0, size * 0.1),
+              offset: Offset(0, size * 0.05),
             ),
           ],
         ),

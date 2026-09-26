@@ -73,13 +73,9 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
         backgroundColor: AppColors.primaryBackground,
         body: Stack(
           children: [
-            // Animated GIF Background
+            // Subtle dark background
             const Positioned.fill(
-              child: AnimatedGifBackground(
-                assetPath: 'assets/background/incoming_call_bg.gif',
-                overlayOpacity: 0.4,
-                child: SizedBox.shrink(),
-              ),
+              child: AnimatedGradientBg(preset: GradientPreset.subtle),
             ),
 
             SafeArea(
@@ -101,7 +97,7 @@ class _IncomingCallScreenState extends ConsumerState<IncomingCallScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'ConnectCall',
+                    'PhaseGuard Protected',
                     style: AppTextStyles.titleMedium.copyWith(color: AppColors.secondaryText),
                   ),
                   const Spacer(),
