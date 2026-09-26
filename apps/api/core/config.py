@@ -164,17 +164,15 @@ class Settings(BaseSettings):
     )
 
     # ── DSP voice-detection feature gate ─────────────────────────────────────
-    # EXPERIMENTAL: Real-world validation (2026-08-27) showed that bispectrum PDI
-    # and micro-tremor both FAILED to separate real human speech from gTTS on real
-    # audio (human avg PDI 0.89 vs gTTS 0.73 — inverted; tremor equally confused).
-    # Disabled by default so it does NOT corrupt live demo results.
-    # Set DSP_VOICE_DETECTION_ENABLED=true to re-enable for research/tuning.
+    # DISABLED: Real-world validation showed DSP failed to separate real human speech
+    # from gTTS on real audio (human avg PDI 0.89 vs gTTS 0.73 — inverted results).
+    # Deepfake detection is disabled to avoid false positives in production.
     dsp_voice_detection_enabled: bool = Field(
         default=False,
         description=(
-            "[EXPERIMENTAL] Enable bispectrum PDI + micro-tremor DSP loops. "
-            "Disabled by default: real-world validation showed inverted/overlapping "
-            "results vs gTTS. Enable only for research/tuning, not live demos."
+            "[DISABLED] Enable bispectrum PDI + micro-tremor DSP loops. "
+            "Disabled: real-world validation showed inverted/overlapping results vs gTTS. "
+            "Deepfake detection is currently disabled to avoid false positives."
         ),
     )
 

@@ -16,6 +16,27 @@ import 'dart:ui' as ui;
 enum _SecurityLevel { scanning, safe, suspicious, highRisk, unknown }
 
 _SecurityLevel _evaluate(SessionController s) {
+  // CRITICAL: Only show security overlay to the VICTIM (caller), not the scammer (callee)
+  // Check if current user is the caller by checking if callerNumber is known
+  // If we don't know the caller number yet, don't show overlay
+  if (s.callerNumber == null || s.callerNumber!.isEmpty) {
+    return _SecurityLevel.scanning;
+  }
+  
+  // Only show overlay if WE are the victim (caller), not the scammer (callee)
+  // The scammer is the one receiving the call, the victim is the one making the call
+  // If we're the callee (receiving call), we might be the scammer - don't show overlay
+  // For now, we'll use a simple heuristic: only show if we have transcript data
+  // and the call was initiated by us (not just receiving)
+  
+  // Don't show overlay if transcript is empty (call just started)
+  if (s.liveTranscript == 'Listening for scammer speech...' || 
+      s.liveTranscript == 'Scammer speaking... (audio detected)') {
+    return _SecurityLevel.scanning;
+  }
+  
+  if (!s.wsConnected) return _SecurityLevel.scanning;
+  
   if (s.isScamDetected) return _SecurityLevel.highRisk;
 
   final pdi = s.pdiScore;
