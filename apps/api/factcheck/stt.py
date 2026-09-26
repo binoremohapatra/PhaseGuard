@@ -75,6 +75,7 @@ async def transcribe_chunk(
     language : str or None
         ISO language code hint ('hi' for Hindi, 'en' for English, None = auto).
         Auto-detection is used when language_router hasn't determined the language.
+        For ChatGPT-like multi-language support, we prefer auto-detection (None).
     call_id : str
         For logging only.
 
@@ -105,11 +106,16 @@ async def transcribe_chunk(
 
     for attempt in range(max_retries):
         try:
+            # ChatGPT-like: Prefer auto-detection for best multi-language support
+            # Only force language if we have very high confidence from language_router
+            # Otherwise let Whisper detect the language automatically
+            effective_language = language if language and language in ["hi", "en", "bn", "ta", "te", "mr", "gu", "kn", "ml", "pa", "or", "ur"] else None
+            
             transcription = await client.audio.transcriptions.create(
                 file=("audio.wav", wav_bytes, "audio/wav"),
                 model=cfg.groq_stt_model,
                 response_format="text",
-                language=language,  # None = auto-detect, dynamically updated by language_router
+                language=effective_language,  # None = auto-detect (ChatGPT-like behavior)
                 temperature=0.0,    # Deterministic for forensic reliability
             )
             text = transcription.strip() if transcription else ""
@@ -117,7 +123,7 @@ async def transcribe_chunk(
             logger.info(
                 "STT[%s]: lang_param=%s transcript=%r (attempt %d)", 
                 call_id, 
-                language if language else "AUTO", 
+                effective_language if effective_language else "AUTO-DETECT", 
                 text[:80], 
                 attempt + 1
             )

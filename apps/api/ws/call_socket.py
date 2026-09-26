@@ -806,10 +806,23 @@ async def _stt_loop(call_id: str) -> None:
             })
 
             # STT transcription (non-blocking, runs in executor via Groq async client)
+            # ChatGPT-like: Prefer auto-detection for best multi-language support
+            # Only force language if we have very high confidence (>0.8) and VERIFIED support
+            stt_language_hint = None
+            if (
+                detected_lang_hint 
+                and session.language_confidence > 0.8 
+                and session.support_level == "VERIFIED"
+            ):
+                stt_language_hint = detected_lang_hint
+                logger.info("STT[%s]: Using high-confidence language hint: %s", call_id, stt_language_hint)
+            else:
+                logger.info("STT[%s]: Using auto-detection (ChatGPT-like multi-language)", call_id)
+            
             transcript = await transcribe_chunk(
                 audio_chunk,
                 fs=cfg.sample_rate,
-                language=detected_lang_hint,
+                language=stt_language_hint,
                 call_id=call_id,
             )
 
