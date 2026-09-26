@@ -19,6 +19,8 @@ class _SystemSettingsState extends State<SystemSettings> {
   bool officialVerifiedAlerts = true;
   bool isTestingHealth = false;
   String? healthResult;
+  String scambaiterGroqApiKey = '';
+  String scambaiterTavilyApiKey = '';
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +55,8 @@ class _SystemSettingsState extends State<SystemSettings> {
               _buildConnectionStatus(session),
               const SizedBox(height: PgSpace.lg),
               _buildBackendConfig(session),
+              const SizedBox(height: PgSpace.lg),
+              _buildScambaiterConfig(session),
               const SizedBox(height: PgSpace.lg),
               _buildFeatureToggles(session),
               const SizedBox(height: PgSpace.lg),
@@ -248,6 +252,146 @@ class _SystemSettingsState extends State<SystemSettings> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildScambaiterConfig(SessionController session) {
+    return Container(
+      padding: const EdgeInsets.all(PgSpace.lg),
+      decoration: BoxDecoration(
+        color: PgColors.bgSecondary.withValues(alpha: 0.82),
+        border: Border.all(color: PgColors.border.withValues(alpha: 0.8)),
+        borderRadius: BorderRadius.circular(PgRadii.card),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Scambaiter API Configuration',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: PgColors.textSecondary,
+            ),
+          ),
+          const SizedBox(height: PgSpace.md),
+          const Text(
+            'Configure separate API keys for Scambaiter to ensure dedicated resources.',
+            style: TextStyle(
+              fontSize: 11,
+              color: PgColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: PgSpace.md),
+          TextField(
+            controller: TextEditingController(text: scambaiterGroqApiKey),
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Scambaiter Groq API Key',
+              labelStyle: const TextStyle(color: PgColors.textSecondary),
+              hintText: 'gsk_...',
+              hintStyle: const TextStyle(color: PgColors.textMuted),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.accent),
+              ),
+              suffixIcon: const Icon(Icons.key_outlined, color: PgColors.accent),
+            ),
+            onChanged: (value) {
+              setState(() {
+                scambaiterGroqApiKey = value;
+              });
+            },
+          ),
+          const SizedBox(height: PgSpace.md),
+          TextField(
+            controller: TextEditingController(text: scambaiterTavilyApiKey),
+            obscureText: true,
+            decoration: InputDecoration(
+              labelText: 'Scambaiter Tavily API Key',
+              labelStyle: const TextStyle(color: PgColors.textSecondary),
+              hintText: 'tvly-...',
+              hintStyle: const TextStyle(color: PgColors.textMuted),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(PgRadii.bar),
+                borderSide: const BorderSide(color: PgColors.accent),
+              ),
+              suffixIcon: const Icon(Icons.search_outlined, color: PgColors.accent),
+            ),
+            onChanged: (value) {
+              setState(() {
+                scambaiterTavilyApiKey = value;
+              });
+            },
+          ),
+          const SizedBox(height: PgSpace.md),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    // Send API keys to backend
+                    try {
+                      final apiClient = ApiClient(baseUrl: backendUrl);
+                      await apiClient.saveScambaiterConfig(
+                        scambaiterGroqApiKey: scambaiterGroqApiKey,
+                        scambaiterTavilyApiKey: scambaiterTavilyApiKey,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Scambaiter API keys saved successfully'),
+                            backgroundColor: PgColors.safe,
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to save API keys: $e'),
+                            backgroundColor: PgColors.scam,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.save, size: 16),
+                  label: const Text('Save Keys'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: PgColors.accent,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

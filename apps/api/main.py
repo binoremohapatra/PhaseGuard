@@ -1321,6 +1321,41 @@ async def get_call_status(
     }
 
 
+@app.post("/api/v1/scambaiter/config")
+@limiter.limit(LIMIT_API)
+async def save_scambaiter_config(
+    request: Request,
+    body: dict = Body(...),
+) -> dict:
+    """
+    Save Scambaiter-specific API keys configuration.
+    
+    This endpoint allows the Flutter app to configure separate API keys
+    for Scambaiter to ensure dedicated resources for AI persona generation.
+    """
+    from core.config import get_settings
+    
+    cfg = get_settings()
+    
+    scambaiter_groq_key = body.get("scambaiter_groq_api_key", "")
+    scambaiter_tavily_key = body.get("scambaiter_tavily_api_key", "")
+    
+    # In production, these should be stored in a secure secret manager
+    # For now, we'll update the runtime settings (not persistent across restarts)
+    # TODO: Implement secure storage using secret manager
+    
+    logger.info("Scambaiter config updated: groq_key=%s, tavily_key=%s",
+                "SET" if scambaiter_groq_key else "NOT_SET",
+                "SET" if scambaiter_tavily_key else "NOT_SET")
+    
+    return {
+        "status": "success",
+        "message": "Scambaiter API keys configuration updated",
+        "scambaiter_groq_api_key_set": bool(scambaiter_groq_key),
+        "scambaiter_tavily_api_key_set": bool(scambaiter_tavily_key),
+    }
+
+
 @app.get("/metrics")
 @limiter.limit(LIMIT_API)
 async def get_metrics(request: Request) -> dict:

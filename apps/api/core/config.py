@@ -48,6 +48,10 @@ class Settings(BaseSettings):
     groq_stt_model: str = Field(default="whisper-large-v3-turbo")
     groq_llm_model: str = Field(default="llama-3.1-8b-instant")
 
+    # ── Scambaiter API Keys (Separate from main system) ───────────────────────
+    scambaiter_groq_api_key: str = Field(default="", description="Scambaiter-specific Groq API key")
+    scambaiter_tavily_api_key: str = Field(default="", description="Scambaiter-specific Tavily API key")
+
     # ── NewsAPI (3-tier search Tier 1) ────────────────────────────────────────
     # Get free key (no card) at: https://newsapi.org/register
     # Free tier: 100 requests/day for dev use.

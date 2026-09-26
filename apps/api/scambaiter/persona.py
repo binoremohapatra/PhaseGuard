@@ -161,8 +161,10 @@ async def generate_scambaiter_response(
     from core.config import get_settings
 
     cfg = get_settings()
-    if not cfg.groq_api_key:
-        logger.warning("Scambaiter: GROQ_API_KEY not set")
+    # Use Scambaiter-specific API key if available, otherwise fall back to main key
+    groq_key = cfg.scambaiter_groq_api_key or cfg.groq_api_key
+    if not groq_key:
+        logger.warning("Scambaiter: SCAMBAITER_GROQ_API_KEY or GROQ_API_KEY not set")
         return None
 
     # Use question planner to analyze scammer speech and generate strategic questions
@@ -212,7 +214,7 @@ async def generate_scambaiter_response(
 
     from groq import AsyncGroq
 
-    client = AsyncGroq(api_key=cfg.groq_api_key)
+    client = AsyncGroq(api_key=groq_key)
 
     try:
         response = await client.chat.completions.create(

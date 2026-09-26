@@ -375,6 +375,25 @@ class ApiClient {
     return jsonDecode(res.body) as Map<String, dynamic>;
   }
 
+  /// Save Scambaiter API configuration
+  Future<Map<String, dynamic>> saveScambaiterConfig({
+    required String scambaiterGroqApiKey,
+    required String scambaiterTavilyApiKey,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/api/v1/scambaiter/config'),
+      headers: _headers(),
+      body: jsonEncode({
+        'scambaiter_groq_api_key': scambaiterGroqApiKey,
+        'scambaiter_tavily_api_key': scambaiterTavilyApiKey,
+      }),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw ApiException(_detail(res) ?? 'Scambaiter config save failed');
+    }
+    return jsonDecode(res.body) as Map<String, dynamic>;
+  }
+
   // ── Voice/TTS API Methods ─────────────────────────────────────────────────────
 
   /// Enroll a voice sample for cloning
