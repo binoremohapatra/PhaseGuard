@@ -214,7 +214,19 @@ class ConnectionManager:
         try:
             from scambaiter.persona import reset_question_planner
             reset_question_planner()
-            logger.info("Scambaiter activated: call_id=%r (question planner reset)", call_id)
+            
+            # Set initial priority from latest fact-check category if available
+            if session.factcheck_history:
+                latest_category = session.factcheck_history[-1].get("category", "UNKNOWN")
+                if latest_category and latest_category != "UNKNOWN":
+                    from scambaiter.persona import _question_planner
+                    _question_planner.set_priority_from_category(latest_category)
+                    logger.info("Scambaiter activated: call_id=%r (question planner reset with category=%s)", 
+                               call_id, latest_category)
+                else:
+                    logger.info("Scambaiter activated: call_id=%r (question planner reset)", call_id)
+            else:
+                logger.info("Scambaiter activated: call_id=%r (question planner reset, no factcheck history)", call_id)
         except Exception as exc:
             logger.warning("Failed to reset question planner: %s", exc)
             logger.info("Scambaiter activated: call_id=%r", call_id)

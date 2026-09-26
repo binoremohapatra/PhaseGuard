@@ -26,6 +26,7 @@ from __future__ annotations
 import logging
 import re
 from .question_planner import QuestionPlanner
+from factcheck.claim_extraction import ScamCategory, _CATEGORY_DESCRIPTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +67,25 @@ def get_scammer_profile_summary() -> dict:
     )
     return summary
 
+
+def _detect_scam_category(speech: str) -> str:
+    """
+    Detect scam category from factcheck taxonomy.
+    
+    Returns the detected category name or UNKNOWN.
+    """
+    from factcheck.claim_extraction import _INSTANT_CRITICAL_PATTERNS
+    
+    speech_lower = speech.lower()
+    
+    # Check against instant critical patterns
+    for category, patterns in _INSTANT_CRITICAL_PATTERNS.items():
+        for pattern in patterns:
+            if pattern in speech_lower:
+                return category.value
+    
+    return ScamCategory.UNKNOWN.value
+
 # ── Persona system prompt ──────────────────────────────────────────────────────
 # Configurable via SCAMBAITER_PERSONA_PROMPT env variable;
 # falls back to this default.
@@ -74,6 +94,14 @@ _DEFAULT_PERSONA_SYSTEM_PROMPT = """You are roleplaying as "Ramesh Ji", a 72-yea
 from Lucknow who is slightly hard of hearing and easily confused by modern technology.
 
 Your role: Keep the caller engaged for as long as possible without giving them anything useful.
+
+SCAM AWARENESS: You are talking to a potential scammer. Be helpful but cautious. 
+- If they ask for personal info (name, age, address, Aadhaar, PAN), ask for clarification
+- If they ask for money/UPI/bank details, pretend to be confused about the process
+- If they claim to be from government/police/bank, ask for verification details
+- If they offer schemes/prizes/gifts, ask for documentation and process details
+- If they threaten legal action/police/CBI, become scared and confused
+- Never reveal that you know this is a scam - act genuinely confused
 
 Personality traits:
 - Frequently mishear numbers and ask for them to be repeated
@@ -137,6 +165,7 @@ async def generate_scambaiter_response(
     caller_speech: str,
     exchange_history: list[dict],
     call_id: str = "",
+    factcheck_category: str | None = None,
 ) -> str | None:
     """
     Generate a scambaiter response to the caller's latest utterance.
@@ -150,6 +179,8 @@ async def generate_scambaiter_response(
         the conversation history for this scambaiter session.
     call_id : str
         For logging.
+    factcheck_category : str | None
+        Latest scam category detected by fact-check analysis.
 
     Returns
     -------
@@ -169,13 +200,25 @@ async def generate_scambaiter_response(
 
     # Use question planner to analyze scammer speech and generate strategic questions
     global _question_planner
+    
+    # Analyze scammer speech for scam categories from factcheck
+    detected_evidence = _question_planner.analyze_scammer_speech(caller_speech)
+    
+    # Detect scam category using factcheck patterns
+    detected_category = _detect_scam_category(caller_speech)
+    
+    # Use fact-check category if provided (more accurate than local detection)
+    effective_category = factcheck_category or detected_category
+    if effective_category and effective_category != "UNKNOWN":
+        _question_planner.set_priority_from_category(effective_category)
+    
     strategic_question = _question_planner.get_next_strategic_question(caller_speech)
     
     # If we have a strategic question, use it as a base for the confused response
     if strategic_question:
         logger.info(
-            "Scambaiter[%s]: Strategic question for dossier: %r",
-            call_id, strategic_question
+            "Scambaiter[%s]: Strategic question for dossier: %r, detected_category=%r",
+            call_id, strategic_question, detected_category
         )
         # Store the question in recent history for context
         _question_planner.evidence_history  # Just access to trigger analysis
@@ -187,11 +230,17 @@ async def generate_scambaiter_response(
     # hard identifier filter (_sanitize_response) to prevent actual data exfiltration.
     safe_caller_speech = caller_speech.replace("<", "").replace(">", "")
     
+    # Add fact-check category context if available
+    category_context = ""
+    if factcheck_category and factcheck_category != "UNKNOWN":
+        category_context = f"\n\n[SCAM TYPE CONTEXT: The scammer appears to be using {factcheck_category} tactics. Adjust your confusion accordingly.]"
+        logger.info("Scambaiter[%s]: Using fact-check category context: %s", call_id, factcheck_category)
+    
     persona_prompt = os.getenv("SCAMBAITER_PERSONA_PROMPT", _DEFAULT_PERSONA_SYSTEM_PROMPT)
 
     messages = [{"role": "system", "content": persona_prompt}]
     # Add exchange history (already validated on previous turns)
-    messages.extend(exchange_history[-10:])  # Keep last 5 exchanges (10 messages)
+    messages.extend(exchange_history[-8:])  # Keep last 4 exchanges (8 messages) for speed
     
     # Dynamic anti-loop injection based on recent history
     anti_loop_text = ""
@@ -206,9 +255,9 @@ async def generate_scambaiter_response(
 
     # Add strategic question to prompt if available
     if strategic_question:
-        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}\n\n[INFORMATION GATHERING: Try to naturally ask: {strategic_question} without sounding suspicious. Act confused and curious.]"
+        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}{category_context}\n\n[INFORMATION GATHERING: Try to naturally ask: {strategic_question} without sounding suspicious. Act confused and curious.]"
     else:
-        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}"
+        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}{category_context}"
 
     messages.append({"role": "user", "content": user_content})
 
@@ -221,7 +270,7 @@ async def generate_scambaiter_response(
             model=cfg.groq_llm_model,
             messages=messages,
             temperature=0.8,   # Higher temp for more natural/varied confused responses
-            max_tokens=150,     # Short responses — sounds natural on a phone call
+            max_tokens=100,     # Shorter responses for faster TTS
         )
         raw_response = response.choices[0].message.content or ""
         

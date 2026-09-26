@@ -170,6 +170,63 @@ class QuestionPlanner:
             key: [] for key in self.QUESTIONS.keys()
         }
         self.evidence_history: List[Evidence] = []
+        self.priority_categories: List[str] = []  # Prioritized categories based on fact-check
+
+    def set_priority_from_category(self, scam_category: str):
+        """
+        Set question priorities based on detected scam category.
+        
+        Different scam types have different information priorities.
+        """
+        # Mapping of scam categories to priority information categories
+        category_priorities = {
+            "UPI_COLLECT_FRAUD": ["upi", "phone", "company"],
+            "GIFT_CARD_PAYMENT": ["scheme", "phone", "company"],
+            "WIRE_TRANSFER_FRAUD": ["bank", "phone", "company"],
+            "CRYPTO_SCAM": ["website", "scheme", "upi"],
+            "SIM_SWAP": ["phone", "company", "personal"],
+            "DIGITAL_ARREST": ["phone", "company", "threat"],
+            "IMPERSONATION_LAW": ["phone", "company", "threat"],
+            "KYC_SIM_BLOCK": ["phone", "company", "personal"],
+            "ROMANCE_SCAM": ["website", "phone", "personal"],
+            "FAMILY_EMERGENCY": ["phone", "personal", "threat"],
+            "SEXTORTION": ["upi", "phone", "threat"],
+            "INVESTMENT_FRAUD": ["website", "scheme", "bank"],
+            "PRIZE_LOTTERY": ["scheme", "phone", "upi"],
+            "TECH_SUPPORT": ["website", "phone", "company"],
+            "ACCOUNT_SECURITY_ALERT": ["phone", "company", "personal"],
+            "LOAN_HARASSMENT": ["phone", "company", "bank"],
+            "ELECTRICITY_THREAT": ["phone", "company", "threat"],
+            "COURIER_CUSTOMS": ["phone", "company", "scheme"],
+            "FAKE_JOB_TASK": ["website", "scheme", "phone"],
+            "GOVT_SCHEME_IMPERSONATION": ["scheme", "phone", "company"],
+            "MATRIMONIAL_FRAUD": ["upi", "phone", "personal"],
+            "PENSION_PF_SCAM": ["phone", "company", "personal"],
+            "MEDICAL_INSURANCE_SCAM": ["phone", "company", "scheme"],
+            "SCHOLARSHIP_SCAM": ["scheme", "phone", "website"],
+            "EXAM_ADMISSION_SCAM": ["scheme", "phone", "website"],
+            "LOAN_APP_HOOK": ["website", "phone", "upi"],
+            "GAMING_BETTING_SCAM": ["website", "upi", "phone"],
+            "HR_RECRUITER_SCAM": ["website", "phone", "company"],
+            "INCOME_TAX_REFUND": ["phone", "company", "bank"],
+            "EPF_WITHDRAWAL_SCAM": ["phone", "company", "personal"],
+            "PROMOTION_TRANSFER_SCAM": ["phone", "company", "scheme"],
+            "GST_COMPLIANCE_SCAM": ["phone", "company", "threat"],
+            "FERTILIZER_SEED_SUBSIDY": ["scheme", "phone", "company"],
+            "KISAN_CREDIT_CARD": ["scheme", "phone", "bank"],
+            "MODELING_CASTING_SCAM": ["website", "phone", "personal"],
+            "MARKETPLACE_QR_SCAM": ["upi", "phone", "website"],
+            "TRAFFIC_CHALLAN_SCAM": ["phone", "company", "scheme"],
+            "VACCINATION_HEALTH_SCHEME": ["scheme", "phone", "company"],
+            "FAKE_CUSTOMER_CARE": ["phone", "company", "upi"],
+            "RAILWAY_IRCTC_REFUND": ["phone", "company", "bank"],
+            "ECOMMERCE_REFUND_SCAM": ["phone", "company", "upi"],
+            "CREDIT_CARD_UPGRADE": ["phone", "company", "bank"],
+        }
+        
+        self.priority_categories = category_priorities.get(scam_category, [])
+        if self.priority_categories:
+            logger.info("QuestionPlanner: Set priorities for %s: %s", scam_category, self.priority_categories)
 
     def analyze_scammer_speech(self, speech: str) -> List[Evidence]:
         """
@@ -298,8 +355,12 @@ class QuestionPlanner:
             # Profile is complete, return None
             return None
 
-        # Prioritize: company > phone > bank > upi > website > scheme > threat > personal
-        priority_order = ["company", "phone", "bank", "upi", "website", "scheme", "threat", "personal"]
+        # Use priority categories if set (from fact-check), otherwise use default priority
+        if self.priority_categories:
+            priority_order = self.priority_categories + [c for c in ["company", "phone", "bank", "upi", "website", "scheme", "threat", "personal"] if c not in self.priority_categories]
+        else:
+            # Default priority: company > phone > bank > upi > website > scheme > threat > personal
+            priority_order = ["company", "phone", "bank", "upi", "website", "scheme", "threat", "personal"]
 
         for category in priority_order:
             if category in missing:

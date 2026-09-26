@@ -475,11 +475,20 @@ async def _fire_scambaiter_turn(call_id: str, caller_speech: str, turn_id: str) 
     logger.info("[SCAMBAITER][%s][%s] LLM_START: input=%r, context=%d", 
                call_id, turn_id, caller_speech[:60], len(session.scambaiter_log))
     
+    # Extract latest fact-check category to inform Scambaiter strategy
+    latest_category = None
+    if session.factcheck_history:
+        latest_entry = session.factcheck_history[-1]
+        latest_category = latest_entry.get("category", "UNKNOWN")
+        logger.info("[SCAMBAITER][%s][%s] FACTCHECK_CATEGORY: %s", 
+                   call_id, turn_id, latest_category)
+    
     # 1. Generate COMPLETE text response first (no streaming per sentence)
     full_response_text = await generate_scambaiter_response(
         caller_speech=caller_speech,
         exchange_history=session.scambaiter_log,
-        call_id=call_id
+        call_id=call_id,
+        factcheck_category=latest_category
     )
     
     if not full_response_text or not full_response_text.strip():
