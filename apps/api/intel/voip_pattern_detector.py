@@ -21,6 +21,9 @@ def detect_voip_pattern(phone_number: str) -> dict:
         'reason': 'Matches standard mobile pattern'
     }
     
+    if not num:
+        return result
+        
     if len(num) != 10:
         result['is_likely_voip'] = True
         result['confidence'] = 0.9

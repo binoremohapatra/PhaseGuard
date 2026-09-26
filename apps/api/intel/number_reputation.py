@@ -29,6 +29,9 @@ def get_reputation(phone_number: str) -> dict:
 
 def report_number(phone_number: str, dossier_id: str = None, verdict: str = 'CRITICAL'):
     """Increments the report count and saves history."""
+    if not phone_number:
+        return
+        
     store = _load_store()
     record = store.get(phone_number, {
         'times_reported': 0,

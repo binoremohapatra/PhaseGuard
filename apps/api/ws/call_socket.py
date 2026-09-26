@@ -48,7 +48,7 @@ from factcheck.stt import STTAccumulator, transcribe_chunk
 from factcheck.verdict import generate_verdict
 from i18n.language_router import detect_language
 from ingestion.browser_mic import BrowserMicIngestion
-from intel.number_reputation import get_reputation
+from intel.number_reputation import get_reputation, report_number
 from intel.voip_pattern_detector import detect_voip_pattern
 
 logger = logging.getLogger(__name__)
@@ -899,6 +899,9 @@ async def _stt_loop(call_id: str) -> None:
 
             # Auto-trigger family SMS on CRITICAL (notifier will check state)
             if verdict["status"] == "CRITICAL":
+                # Globally flag this number as a scammer
+                report_number(session.caller_number, dossier_id=call_id, verdict="CRITICAL")
+                
                 if cfg.family_contact_number:
                     from escalation.notifier import send_family_alert
                     asyncio.create_task(
