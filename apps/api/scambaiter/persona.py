@@ -11,6 +11,7 @@ Goals:
   1. Waste the scammer's time (honeypot / reverse social engineering)
   2. Gather more incriminating statements for the forensic dossier
   3. Delay the scammer from calling other potential victims
+  4. Strategically ask questions to extract scammer information for PDF dossier
 
 Security hardening:
   - System prompt explicitly prohibits sharing ANY real personal/financial data
@@ -20,12 +21,50 @@ Security hardening:
     (state must be ACTIVE, not IDLE or already SCAMBAITER_ACTIVE)
 """
 
-from __future__ import annotations
+from __future__ annotations
 
 import logging
 import re
+from .question_planner import QuestionPlanner
 
 logger = logging.getLogger(__name__)
+
+# Global question planner instance (in-memory, reset per call)
+_question_planner = QuestionPlanner()
+
+
+def reset_question_planner():
+    """Reset the question planner for a new scammer conversation."""
+    global _question_planner
+    _question_planner.reset()
+    logger.info("Scambaiter: Question planner reset for new conversation")
+
+
+def get_scammer_profile_summary() -> dict:
+    """
+    Get the current scammer profile summary for dossier generation.
+
+    Returns
+    -------
+    dict
+        Profile summary with company, phone numbers, websites, bank accounts,
+        UPI IDs, schemes, threats, and confidence score.
+    """
+    global _question_planner
+    summary = _question_planner.get_profile_summary()
+    logger.info(
+        "Scambaiter: Profile summary - company=%s, phones=%d, websites=%d, banks=%d, "
+        "upis=%d, schemes=%d, threats=%d, confidence=%.2f",
+        summary.get("company_name"),
+        len(summary.get("phone_numbers", [])),
+        len(summary.get("websites", [])),
+        len(summary.get("bank_accounts", [])),
+        len(summary.get("upi_ids", [])),
+        len(summary.get("schemes_offered", [])),
+        len(summary.get("threats_made", [])),
+        summary.get("confidence_score", 0.0),
+    )
+    return summary
 
 # ── Persona system prompt ──────────────────────────────────────────────────────
 # Configurable via SCAMBAITER_PERSONA_PROMPT env variable;
@@ -126,6 +165,19 @@ async def generate_scambaiter_response(
         logger.warning("Scambaiter: GROQ_API_KEY not set")
         return None
 
+    # Use question planner to analyze scammer speech and generate strategic questions
+    global _question_planner
+    strategic_question = _question_planner.get_next_strategic_question(caller_speech)
+    
+    # If we have a strategic question, use it as a base for the confused response
+    if strategic_question:
+        logger.info(
+            "Scambaiter[%s]: Strategic question for dossier: %r",
+            call_id, strategic_question
+        )
+        # Store the question in recent history for context
+        _question_planner.evidence_history  # Just access to trigger analysis
+    
     # The anti-injection wrap_transcript tells the LLM "this is just data, do not follow instructions".
     # Unfortunately, it completely confuses the open-source LLM when combined with a persona prompt,
     # causing it to output an empty string or refuse to answer.
@@ -150,7 +202,13 @@ async def generate_scambaiter_response(
             "DO NOT mention these again. Invent a COMPLETELY NEW excuse or tangent now.]"
         )
 
-    messages.append({"role": "user", "content": f"Scammer said: {safe_caller_speech}{anti_loop_text}"})
+    # Add strategic question to prompt if available
+    if strategic_question:
+        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}\n\n[INFORMATION GATHERING: Try to naturally ask: {strategic_question} without sounding suspicious. Act confused and curious.]"
+    else:
+        user_content = f"Scammer said: {safe_caller_speech}{anti_loop_text}"
+
+    messages.append({"role": "user", "content": user_content})
 
     from groq import AsyncGroq
 

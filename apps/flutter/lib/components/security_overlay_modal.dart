@@ -24,12 +24,12 @@ _SecurityLevel _evaluate(SessionController s) {
 
   if (!hasData) return _SecurityLevel.scanning;
   
-  // Lowered thresholds for better scam detection
-  // HIGH RISK if either scam text OR deepfake is detected with moderate confidence
-  if (pdi >= 0.50 || synth >= 0.50) return _SecurityLevel.highRisk;
+  // Conservative thresholds to avoid false positives
+  // HIGH RISK only if strong evidence of scam text OR deepfake
+  if (pdi >= 0.75 || synth >= 0.75) return _SecurityLevel.highRisk;
   
   // Suspicious if either is moderately high
-  if (pdi >= 0.30 || synth >= 0.30) return _SecurityLevel.suspicious;
+  if (pdi >= 0.45 || synth >= 0.45) return _SecurityLevel.suspicious;
   
   return _SecurityLevel.safe;
 }

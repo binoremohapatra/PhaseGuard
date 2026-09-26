@@ -999,6 +999,17 @@ async def get_dossier(
 
     # Build PDF
     from forensics.pdf_report import generate_forensic_pdf
+    
+    # Get scammer profile from question planner if scambaiter was used
+    scammer_profile = {}
+    if session.scambaiter_log:
+        try:
+            from scambaiter.persona import get_scammer_profile_summary
+            scammer_profile = get_scamber_profile_summary()
+            logger.info("Dossier: Scambaiter profile included - confidence=%.2f", scammer_profile.get("confidence_score", 0.0))
+        except Exception as exc:
+            logger.warning("Failed to get scammer profile: %s", exc)
+    
     pdf_bytes = generate_forensic_pdf(
         call_id=call_id,
         call_start_time=session.factcheck_history[0].get("ts", "N/A") if session.factcheck_history else "N/A",
@@ -1013,6 +1024,7 @@ async def get_dossier(
         factcheck_history=session.factcheck_history,
         transcript_summary=full_transcript[:2000],
         scambaiter_log=session.scambaiter_log,
+        scammer_profile=scammer_profile,
         escalation_records=[
             {
                 "drafted_at": r.drafted_at,

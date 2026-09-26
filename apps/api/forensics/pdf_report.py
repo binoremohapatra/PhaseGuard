@@ -156,8 +156,9 @@ def generate_forensic_pdf(
     factcheck_history: list[dict[str, Any]],
     transcript_summary: str,
     scambaiter_log: list[dict[str, Any]],
-    escalation_records: list[dict[str, Any]],
-    pcm16_bytes: bytes,
+    scammer_profile: dict[str, Any] | None = None,
+    escalation_records: list[dict[str, Any]] = [],
+    pcm16_bytes: bytes = b"",
     fs: int = 16_000,
     entity_verification: list[dict[str, Any]] | None = None,
     video_frames: list[dict[str, Any]] | None = None,
@@ -372,9 +373,65 @@ def generate_forensic_pdf(
             ))
             story.append(Spacer(1, 0.2 * cm))
 
+    # ── Scammer Profile (from Question Planner) ───────────────────────────────────
+    if scammer_profile:
+        story.append(PageBreak())
+        story.append(Paragraph("7. Scammer Profile (AI-Extracted)", _HEADING_STYLE))
+        story.append(Paragraph(
+            "The following information was extracted from the scammer's statements "
+            "during the Scambaiter conversation using strategic questioning.",
+            _BODY_STYLE,
+        ))
+        
+        profile_data = [["Field", "Value"]]
+        
+        if scammer_profile.get("company_name"):
+            profile_data.append(["Company Name", scammer_profile["company_name"]])
+        
+        if scammer_profile.get("phone_numbers"):
+            profile_data.append(["Phone Numbers", ", ".join(scammer_profile["phone_numbers"])])
+        
+        if scammer_profile.get("websites"):
+            profile_data.append(["Websites", ", ".join(scammer_profile["websites"])])
+        
+        if scammer_profile.get("bank_accounts"):
+            profile_data.append(["Bank Accounts", ", ".join(scammer_profile["bank_accounts"])])
+        
+        if scammer_profile.get("upi_ids"):
+            profile_data.append(["UPI IDs", ", ".join(scammer_profile["upi_ids"])])
+        
+        if scammer_profile.get("schemes_offered"):
+            profile_data.append(["Schemes Offered", ", ".join(scammer_profile["schemes_offered"])])
+        
+        if scammer_profile.get("threats_made"):
+            profile_data.append(["Threats Made", ", ".join(scammer_profile["threats_made"])])
+        
+        profile_data.append([
+            "Confidence Score",
+            f"{scammer_profile.get('confidence_score', 0.0) * 100:.1f}%"
+        ])
+        
+        profile_data.append([
+            "Evidence Count",
+            str(scammer_profile.get("evidence_count", 0))
+        ])
+        
+        t = Table(profile_data, colWidths=[5 * cm, 10 * cm])
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#16213e")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+            ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.lightgrey]),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 0.5 * cm))
+
     # ── Escalation Records ────────────────────────────────────────────────────
     if escalation_records:
-        story.append(Paragraph("7. Escalation Chain of Custody", _HEADING_STYLE))
+        story.append(Paragraph("8. Escalation Chain of Custody", _HEADING_STYLE))
         story.append(Paragraph(
             "All escalation attempts are logged here for chain-of-custody purposes. "
             "No escalation was sent without explicit human confirmation.",

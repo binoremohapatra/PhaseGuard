@@ -199,6 +199,7 @@ class ConnectionManager:
         """
         Transition a call into SCAMBAITER_ACTIVE state.
         Guard: only allowed when state == ACTIVE.
+        Also resets the question planner for information gathering.
         """
         session = self.require_session(call_id)
         if session.state != CallState.ACTIVE:
@@ -208,7 +209,15 @@ class ConnectionManager:
                 detail=f"Cannot activate scambaiter: call is in state {session.state.value}",
             )
         session.state = CallState.SCAMBAITER_ACTIVE
-        logger.info("Scambaiter activated: call_id=%r", call_id)
+        
+        # Reset question planner for new scammer conversation
+        try:
+            from scambaiter.persona import reset_question_planner
+            reset_question_planner()
+            logger.info("Scambaiter activated: call_id=%r (question planner reset)", call_id)
+        except Exception as exc:
+            logger.warning("Failed to reset question planner: %s", exc)
+            logger.info("Scambaiter activated: call_id=%r", call_id)
 
     # ── Broadcast helpers ─────────────────────────────────────────────────────
 

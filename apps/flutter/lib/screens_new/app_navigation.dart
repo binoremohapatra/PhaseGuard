@@ -289,6 +289,8 @@ class MainDashboard extends StatelessWidget {
                   const SizedBox(height: PgSpace.lg),
                   _buildQuickActions(context),
                   const SizedBox(height: PgSpace.lg),
+                  _buildFamilyMembers(),
+                  const SizedBox(height: PgSpace.lg),
                   _buildRecentActivity(session),
                   const SizedBox(height: PgSpace.lg),
                   _buildDefenseTelemetry(),
@@ -738,6 +740,101 @@ class MainDashboard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFamilyMembers() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Family Members',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: PgColors.textSecondary,
+              ),
+            ),
+            Text(
+              '3 PROTECTED',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+                color: PgColors.safe.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: PgSpace.sm),
+        Container(
+          padding: const EdgeInsets.all(PgSpace.md),
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(PgRadii.card),
+            border: Border.all(color: PgColors.border.withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildFamilyMember('Papa', '9XXXX XXXX1', true),
+              _buildFamilyMember('Mummy', '9XXXX XXXX2', true),
+              _buildFamilyMember('Beta', '9XXXX XXXX3', false),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFamilyMember(String name, String phone, bool isProtected) {
+    return Column(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: isProtected 
+                ? [PgColors.safe.withValues(alpha: 0.3), PgColors.safe.withValues(alpha: 0.1)]
+                : [PgColors.suspicious.withValues(alpha: 0.3), PgColors.suspicious.withValues(alpha: 0.1)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            border: Border.all(
+              color: isProtected ? PgColors.safe : PgColors.suspicious,
+              width: 2,
+            ),
+          ),
+          child: Icon(
+            isProtected ? Icons.shield_rounded : Icons.shield_outlined,
+            color: isProtected ? PgColors.safe : PgColors.suspicious,
+            size: 24,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          name,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: PgColors.textPrimary,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          phone,
+          style: const TextStyle(
+            fontSize: 10,
+            color: PgColors.textSecondary,
+          ),
         ),
       ],
     );
