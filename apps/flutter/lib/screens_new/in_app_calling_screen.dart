@@ -87,6 +87,10 @@ class _InAppCallingScreenState extends State<InAppCallingScreen> {
 
   void _setupScambaiterAudio() {
     final sessionController = context.read<SessionController>();
+    // Start call-level Scambaiter session (connects audio stream to calling service)
+    _callingService.startScambaiterSession(sessionController.scambaiterAudioStream);
+    debugPrint('[InAppCallingScreen] 🎭 Scambaiter session started at call-level');
+    
     // Listen to AI Scambaiter TTS bytes and inject them into the active call
     // SCENARIO: We call victim → Scammer is on victim's phone (remote caller)
     // This AI voice goes to the SCAMMER (who is on the remote end), not the victim

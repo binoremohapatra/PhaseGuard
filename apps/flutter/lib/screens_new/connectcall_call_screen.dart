@@ -61,6 +61,11 @@ class _ConnectCallCallScreenState extends State<ConnectCallCallScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final session = context.read<SessionController>();
       final callingService = context.read<ConnectCallCallingService>();
+      
+      // Start call-level Scambaiter session (connects audio stream to calling service)
+      callingService.startScambaiterSession(session.scambaiterAudioStream);
+      debugPrint('[ConnectCallCallScreen] 🎭 Scambaiter session started at call-level');
+      
       _scambaiterSub = session.scambaiterAudioStream.listen((chunk) {
         callingService.playScambaiterAudio(chunk);
       });

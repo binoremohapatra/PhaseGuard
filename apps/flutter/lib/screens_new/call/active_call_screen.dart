@@ -74,6 +74,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen> {
         }
       });
 
+      // Start call-level Scambaiter session (connects audio stream to calling service)
+      widget.callingService.startScambaiterSession(session.scambaiterAudioStream);
+      debugPrint('[ActiveCallScreen] 🎭 Scambaiter session started at call-level');
+
       // Listen to AI Scambaiter TTS bytes and inject them into the active call
       _scambaiterAudioSub = session.scambaiterAudioStream.listen((chunk) {
         debugPrint('[ActiveCallScreen] 🔊 Scambaiter audio received: ${chunk.length} bytes, mounted=$mounted, isJoined=${widget.callingService.isJoined}');
