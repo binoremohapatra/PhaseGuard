@@ -551,11 +551,13 @@ class SessionController extends ChangeNotifier {
       case 'transcript_update':
         final text = json['text'] as String? ?? '';
         if (text.isNotEmpty) {
+          debugPrint('📝 TRANSCRIPT RECEIVED: $text');
           transcriptHistory.add(text);
           if (transcriptHistory.length > 50) {
              transcriptHistory.removeAt(0);
           }
           liveTranscript = transcriptHistory.join(' ');
+          debugPrint('📝 LIVE TRANSCRIPT: $liveTranscript');
           
           // P0: Update language detection state from backend
           detectedLanguage = json['language'] as String?;
@@ -597,6 +599,12 @@ class SessionController extends ChangeNotifier {
             'text': callerText,
             'timestamp': time,
           });
+          // Also add caller text to main transcript for visibility
+          transcriptHistory.add(callerText);
+          if (transcriptHistory.length > 50) {
+            transcriptHistory.removeAt(0);
+          }
+          liveTranscript = transcriptHistory.join(' ');
         }
         if (aiText.isNotEmpty) {
           scambaiterConversation.add({
@@ -604,7 +612,14 @@ class SessionController extends ChangeNotifier {
             'text': aiText,
             'timestamp': time,
           });
+          // Also add AI text to main transcript for visibility
+          transcriptHistory.add('[AI]: $aiText');
+          if (transcriptHistory.length > 50) {
+            transcriptHistory.removeAt(0);
+          }
+          liveTranscript = transcriptHistory.join(' ');
         }
+        notifyListeners();
         break;
 
       case 'config_info':
@@ -1281,7 +1296,11 @@ class SessionController extends ChangeNotifier {
     // STREAM AUDIO TO WEB BACKEND FOR ALL PROCESSING
     // Backend handles: STT, scam detection, deepfake analysis, scambaiter
     if (wsConnected) {
+      debugPrint('🔊 SENDING AUDIO CHUNK: ${chunk.length} bytes, RMS: ${rms.toStringAsFixed(6)}');
       _socket.sendBytes(chunk);
+    } else {
+      debugPrint('⚠️ WebSocket NOT CONNECTED - audio chunk dropped');
+    }
       // debugPrint('📤 Audio chunk sent to backend: ${chunk.length} bytes');
     } else {
       debugPrint('⚠️ wsConnected=FALSE — audio NOT sent (connecting=$connecting). Call startSession first!');
