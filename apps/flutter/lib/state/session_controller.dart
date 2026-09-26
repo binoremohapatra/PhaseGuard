@@ -1300,10 +1300,6 @@ class SessionController extends ChangeNotifier {
       _socket.sendBytes(chunk);
     } else {
       debugPrint('⚠️ WebSocket NOT CONNECTED - audio chunk dropped');
-    }
-      // debugPrint('📤 Audio chunk sent to backend: ${chunk.length} bytes');
-    } else {
-      debugPrint('⚠️ wsConnected=FALSE — audio NOT sent (connecting=$connecting). Call startSession first!');
       // Auto-reconnect if not already connecting
       if (!connecting) {
         debugPrint('🔄 Auto-reconnecting to backend...');
