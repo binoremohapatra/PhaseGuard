@@ -21,7 +21,7 @@ Security hardening:
     (state must be ACTIVE, not IDLE or already SCAMBAITER_ACTIVE)
 """
 
-from __future__ annotations
+from __future__ import annotations
 
 import logging
 import re
@@ -76,13 +76,12 @@ def _detect_scam_category(speech: str) -> str:
     """
     from factcheck.claim_extraction import _INSTANT_CRITICAL_PATTERNS
     
-    speech_lower = speech.lower()
-    
     # Check against instant critical patterns
-    for category, patterns in _INSTANT_CRITICAL_PATTERNS.items():
+    # _INSTANT_CRITICAL_PATTERNS is dict: {category_name: (category_value, [regex_patterns])}
+    for category_name, (category_value, patterns) in _INSTANT_CRITICAL_PATTERNS.items():
         for pattern in patterns:
-            if pattern in speech_lower:
-                return category.value
+            if pattern.search(speech):
+                return category_value
     
     return ScamCategory.UNKNOWN.value
 

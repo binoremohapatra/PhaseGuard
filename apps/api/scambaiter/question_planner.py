@@ -243,7 +243,7 @@ class QuestionPlanner:
                 for match in matches:
                     # Clean and normalize the match
                     cleaned = match.strip()
-                    if cleaned and len(clean) > 2:
+                    if cleaned and len(cleaned) > 2:
                         evidence = Evidence(
                             category=category,
                             value=cleaned,
