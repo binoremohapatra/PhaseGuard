@@ -406,6 +406,9 @@ def generate_forensic_pdf(
         if scammer_profile.get("threats_made"):
             profile_data.append(["Threats Made", ", ".join(scammer_profile["threats_made"])])
         
+        if scammer_profile.get("personal_info"):
+            profile_data.append(["Personal Info Requested", ", ".join(scammer_profile["personal_info"])])
+        
         profile_data.append([
             "Confidence Score",
             f"{scammer_profile.get('confidence_score', 0.0) * 100:.1f}%"

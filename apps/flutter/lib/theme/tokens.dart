@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Design-matching color palette based on screenshots
-/// Premium dark-mode palette — deep navy/slate backgrounds, electric teal accent
+/// Design-matching color palette based on logo
+/// Black background with blue accent brand colors
 class PgColors {
-  // Backgrounds - Updated to match logo background color
-  static const bgPrimary = Color(0xFF1A237E); // Dark blue (matching logo background)
-  static const bgSecondary = Color(0xFF283593); // Slightly lighter card
-  static const bgElevated = Color(0xFF3949AB); // Elevated content areas
+  // Backgrounds - Black based (matching logo background)
+  static const bgPrimary = Color(0xFF000000); // Pure black
+  static const bgSecondary = Color(0xFF0A0A0A); // Very dark gray
+  static const bgElevated = Color(0xFF141414); // Dark gray for cards
 
-  // Brand accent — electric teal/cyan
-  static const accent = Color(0xFF00D4FF);
-  static const accentDim = Color(0xFF0090B0);
-  static const accentGlow = Color(0x3300D4FF); // 20% opacity glow
+  // Brand accent — Blue (matching logo)
+  static const accent = Color(0xFF0066FF); // Bright blue
+  static const accentDim = Color(0xFF0044AA); // Darker blue
+  static const accentGlow = Color(0x330066FF); // 20% opacity glow
 
   // Semantic states
-  // Electric Teal = Neutral Brand / System UI / AI Scambaiter
+  // Blue = Neutral Brand / System UI / AI Scambaiter
   // Green = Safe / Verified / Active only
   // Amber = Suspicious / Warning / Review only
   // Red = Scam / Danger / Critical Threat only
@@ -31,38 +31,38 @@ class PgColors {
 
   // Hero Card Gradients & Glows
   static const heroCardGradient = [
-    Color(0xFF112338),
-    Color(0xFF0D1B2A),
-    Color(0xFF0F2428),
+    Color(0xFF000000),
+    Color(0xFF0A0A1A),
+    Color(0xFF000A10),
   ];
   static const cyberCardGradient = [
-    Color(0xFF131D31),
-    Color(0xFF0F1726),
+    Color(0xFF000510),
+    Color(0xFF000A15),
   ];
 
   // Text
-  static const textPrimary = Color(0xFFF1F5F9);
-  static const textSecondary = Color(0xFF94A3B8);
-  static const textMuted = Color(0xFF475569);
+  static const textPrimary = Color(0xFFFFFFFF); // White
+  static const textSecondary = Color(0xFFB0B0B0); // Light gray
+  static const textMuted = Color(0xFF606060); // Medium gray
 
   // Waveform bars
-  static const waveformActive = Color(0xFF00D4FF);
-  static const waveformInactive = Color(0xFF1E3A4A);
+  static const waveformActive = Color(0xFF0066FF); // Blue
+  static const waveformInactive = Color(0xFF1A1A1A); // Dark gray
 
   // Borders
-  static const border = Color(0xFF1E2D45);
-  static const borderAccent = Color(0xFF0A4D68);
+  static const border = Color(0xFF1A1A1A); // Dark gray
+  static const borderAccent = Color(0xFF0044AA); // Dark blue
 
   // Glass effects
-  static const glassBg = Color.fromRGBO(0, 212, 255, 0.05);
-  static const glassBgStrong = Color.fromRGBO(0, 212, 255, 0.08);
-  static const glassBorder = Color.fromRGBO(0, 212, 255, 0.14);
+  static const glassBg = Color.fromRGBO(0, 102, 255, 0.05); // Blue tint
+  static const glassBgStrong = Color.fromRGBO(0, 102, 255, 0.08); // Blue tint
+  static const glassBorder = Color.fromRGBO(0, 102, 255, 0.14); // Blue tint
 
   // Legacy / backward-compat colors
   static const white = Color(0xFFFFFFFF);
-  static const lightBlue = Color(0xFFC1E8FF);
-  static const mediumBlue = Color(0xFF7DA0CA);
-  static const accentBlue = Color(0xFF5483B3);
+  static const lightBlue = Color(0xFF4488FF); // Light blue
+  static const mediumBlue = Color(0xFF0055CC); // Medium blue
+  static const accentBlue = Color(0xFF0066FF); // Brand blue
   static const primary = accentBlue;
 
   static const warn = Color(0xFFF4C95D);
@@ -83,13 +83,13 @@ class PgColors {
   static const borderSubtle = Color(0x1AFFFFFF);   // hairline borders on glass cards
 
   static const screenGradient = [
-    Color(0xFF00D4FF),
-    Color(0xFF1E2A3A),
-    Color(0xFF0A0F1E),
-    Color(0xFF051018),
+    Color(0xFF000000),
+    Color(0xFF000510),
+    Color(0xFF000A15),
+    Color(0xFF000000),
   ];
 
-  static const primaryBtn = [Color(0xFFFF6B78), Color(0xFFFF4457)];
+  static const primaryBtn = [Color(0xFF0066FF), Color(0xFF0044AA)]; // Blue gradient
 }
 
 class PgType {

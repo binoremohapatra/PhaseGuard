@@ -5,41 +5,41 @@ library app_theme;
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary palette
-  static const primary = Color(0xFF6C63FF);
-  static const primaryDark = Color(0xFF4F46E5);
-  static const primaryLight = Color(0xFF9C59FF);
+  // Primary palette - Blue (matching logo)
+  static const primary = Color(0xFF0066FF);
+  static const primaryDark = Color(0xFF0044AA);
+  static const primaryLight = Color(0xFF3388FF);
   static const onPrimary = Colors.white;
-  static const primary10 = Color(0x1A6C63FF);
-  static const primary20 = Color(0x336C63FF);
+  static const primary10 = Color(0x1A0066FF);
+  static const primary20 = Color(0x330066FF);
   static const onPrimary10 = Color(0x1AFFFFFF);
 
   // Secondary
-  static const secondary = Color(0xFF9C59FF);
+  static const secondary = Color(0xFF3388FF);
   static const onSecondary = Colors.white;
-  static const secondary20 = Color(0x339C59FF);
+  static const secondary20 = Color(0x333388FF);
 
   // Tertiary (danger / decline)
   static const tertiary = Color(0xFFEF4444);
 
-  // Background
-  static const primaryBackground = Color(0xFF0F0E1A);
-  static const secondaryBackground = Color(0xFF1E1D2E);
-  static const surfaceVariant = Color(0xFF252438);
-  static const surface30 = Color(0x4D252438);
-  static const surface40 = Color(0x66252438);
-  static const surface20 = Color(0x33252438);
+  // Background - Black based
+  static const primaryBackground = Color(0xFF000000);
+  static const secondaryBackground = Color(0xFF0A0A0A);
+  static const surfaceVariant = Color(0xFF141414);
+  static const surface30 = Color(0x4D141414);
+  static const surface40 = Color(0x66141414);
+  static const surface20 = Color(0x33141414);
 
   // Text
   static const primaryText = Colors.white;
-  static const secondaryText = Color(0xFF9A97C5);
-  static const accent3 = Color(0xFF6A6890);
+  static const secondaryText = Color(0xFFB0B0B0);
+  static const accent3 = Color(0xFF606060);
 
   // Borders
-  static const alternate = Color(0xFF3D3B5E);
+  static const alternate = Color(0xFF1A1A1A);
 
   // Semantic
-  static const success = Color(0xFF4ADE80);
+  static const success = Color(0xFF22C55E);
   static const error = Color(0xFFEF4444);
   static const warning = Color(0xFFF59E0B);
 

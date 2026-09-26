@@ -46,6 +46,7 @@ class ScammerProfile:
     upi_ids: List[str] = field(default_factory=list)
     schemes_offered: List[str] = field(default_factory=list)
     threats_made: List[str] = field(default_factory=list)
+    personal_info: List[str] = field(default_factory=list)
     confidence_score: float = 0.0  # Overall confidence in profile
 
 
@@ -58,33 +59,48 @@ class QuestionPlanner:
             r"\b(?:company|organization|firm|ltd|pvt|limited|corporation|enterprise)\b",
             r"\b(?:SBI|HDFC|ICICI|Axis|PNB|LIC|Bajaj|Reliance|Tata|Adani)\b",
             r"\b(?:Pradhan Mantri|PM|government|gov|ministry)\b",
+            r"\b(?:RBI|SEBI|IRDA|TRAI)\b",  # Regulatory bodies
+            r"\b(?:NPCI|UPI|BHIM)\b",  # Payment systems
         ],
         "phone": [
             r"\b\d{10}\b",  # 10-digit mobile
             r"\b\d{11,12}\b",  # Phone with country code
             r"\b(?:toll.?free|customer.?care|helpline)\b",
+            r"\b(?:mobile|contact|call)\s*\d+",
         ],
         "website": [
             r"\b(?:https?://|www\.|\.com|\.in|\.org)\b",
             r"\b(?:portal|website|link|url|download)\b",
+            r"\b(?:app|application)\s*(?:download|install)\b",
         ],
         "bank": [
             r"\b(?:account|bank|IFSC|branch|MICR)\b",
             r"\b(?:deposit|transfer|withdraw|credit|debit)\b",
+            r"\b(?:savings|current|FD|RD)\s*account\b",
+            r"\b(?:cheque|check|NEFT|RTGS|IMPS)\b",
         ],
         "upi": [
             r"\b(?:UPI|GPay|Paytm|PhonePe|BHIM)\b",
             r"\b[\w.\-]+@[\w]+\.(?:upi|apl)\b",
+            r"\b(?:QR code|QR)\b",
+            r"\b(?:payment|pay|send money)\b",
         ],
         "scheme": [
             r"\b(?:scheme|plan|offer|discount|bonus|reward|prize|lottery)\b",
             r"\b(?:insurance|policy|investment|FD|RD|SIP|mutual fund)\b",
             r"\b(?:loan|credit card|personal loan|home loan)\b",
+            r"\b(?:subsidy|benefit|yojana|welfare)\b",
         ],
         "threat": [
             r"\b(?:police|court|case|FIR|arrest|jail|legal action)\b",
             r"\b(?:block|suspend|freeze|deactivate|close)\b",
             r"\b(?:serious|consequence|trouble|problem|issue)\b",
+            r"\b(?:action|penalty|fine|complaint)\b",
+        ],
+        "personal": [
+            r"\b(?:name|age|dob|date of birth|address)\b",
+            r"\b(?:father|mother|spouse|family)\b",
+            r"\b(?:aadhaar|PAN|ID proof|identity)\b",
         ],
     }
 
@@ -94,36 +110,57 @@ class QuestionPlanner:
             "बेटा, आप किस कंपनी से बोल रहे हो?",
             "आपकी कंपनी का नाम क्या है?",
             "क्या यह सरकारी योजना है?",
+            "कार्यालय कहाँ है?",
+            "कंपनी का पता बताओ ना।",
         ],
         "phone": [
             "अगर मुझे बात करनी हो तो कौन से नंबर डालूं?",
             "आपका आधिकारिक नंबर क्या है?",
             "helpline नंबर बताओ ना बेटा।",
+            "कस्टमर केयर का नंबर दो।",
+            "क्या मैं आपको वापस कॉल कर सकता हूँ?",
         ],
         "website": [
             "वेबसाइट का पता बताओ ना, मैं देख लूंगा।",
             "क्या कोई लिंक भेजना है?",
             "website दिखाओ तो सही।",
+            "ऐप कैसे डाउनलोड करूँ?",
+            "और जानकारी कहाँ मिलेगी?",
         ],
         "bank": [
             "बैंक का नाम क्या है?",
             "IFSC कोड बताओ ना।",
             "अकाउंट नंबर क्या है?",
+            "कौन सी ब्रांच है?",
+            "बैंक का पता बताओ।",
         ],
         "upi": [
             "UPI ID बताओ ना बेटा।",
             "किस UPI पर भेजना है?",
             "GPay/Paytm का नंबर दो।",
+            "QR code भेजोगे?",
+            "payment कैसे करना है?",
         ],
         "scheme": [
             "यह कौन सा स्कीम है बेटा?",
             "इसमें क्या बेनिफिट है?",
             "प्रोसेस कैसे होगा?",
+            "कितना मिलेगा?",
+            "documents कौन से चाहिए?",
         ],
         "threat": [
             "क्या कोई दिक्कत है?",
             "क्या मेरा कनेक्शन बंद हो जाएगा?",
             "आप क्या कर दोगे?",
+            "क्या पुलिस बुलाओगे?",
+            "क्या कोई कानूनी कार्रवाई होगी?",
+        ],
+        "personal": [
+            "मेरा नाम क्या है?",
+            "मेरी उम्र क्या है?",
+            "मेरा पता बताओ ना।",
+            "मेरे पिता का नाम क्या है?",
+            "मेरा Aadhaar नंबर बताओ।",
         ],
     }
 
@@ -180,6 +217,8 @@ class QuestionPlanner:
             self.profile.schemes_offered.append(evidence.value)
         elif evidence.category == "threat" and evidence.value not in self.profile.threats_made:
             self.profile.threats_made.append(evidence.value)
+        elif evidence.category == "personal" and evidence.value not in self.profile.personal_info:
+            self.profile.personal_info.append(evidence.value)
 
         # Update overall confidence
         total_fields = sum([
@@ -190,8 +229,9 @@ class QuestionPlanner:
             len(self.profile.upi_ids),
             len(self.profile.schemes_offered),
             len(self.profile.threats_made),
+            len(self.profile.personal_info),
         ])
-        self.profile.confidence_score = min(total_fields / 7.0, 1.0)
+        self.profile.confidence_score = min(total_fields / 8.0, 1.0)
 
         self.evidence_history.append(evidence)
 
@@ -217,6 +257,8 @@ class QuestionPlanner:
             missing.append("scheme")
         if len(self.profile.threats_made) == 0:
             missing.append("threat")
+        if len(self.profile.personal_info) == 0:
+            missing.append("personal")
 
         return missing
 
@@ -256,8 +298,8 @@ class QuestionPlanner:
             # Profile is complete, return None
             return None
 
-        # Prioritize: company > phone > bank > upi > website > scheme > threat
-        priority_order = ["company", "phone", "bank", "upi", "website", "scheme", "threat"]
+        # Prioritize: company > phone > bank > upi > website > scheme > threat > personal
+        priority_order = ["company", "phone", "bank", "upi", "website", "scheme", "threat", "personal"]
 
         for category in priority_order:
             if category in missing:
@@ -283,6 +325,7 @@ class QuestionPlanner:
             "upi": ["upi", "gpay", "paytm", "phonepe", "bhim"],
             "scheme": ["scheme", "plan", "offer", "discount", "bonus"],
             "threat": ["police", "court", "case", "arrest", "block"],
+            "personal": ["name", "age", "dob", "address", "father", "aadhaar"],
         }
 
         if category in category_keywords:
@@ -308,6 +351,7 @@ class QuestionPlanner:
             "upi_ids": self.profile.upi_ids,
             "schemes_offered": self.profile.schemes_offered,
             "threats_made": self.profile.threats_made,
+            "personal_info": self.profile.personal_info,
             "confidence_score": self.profile.confidence_score,
             "evidence_count": len(self.evidence_history),
         }
